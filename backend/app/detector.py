@@ -125,6 +125,83 @@ def detect_residual_move(
     )
 
 
+DELIVERY_VOLUME_MULTIPLE = 2.5
+DELIVERY_PCT_THRESHOLD = 60.0
+BLOCK_TRADE_MULTIPLE = 3.0
+
+
+def detect_delivery_conviction(
+    symbol: str,
+    volume: float,
+    deliv_pct: Optional[float],
+    vol_median_20d: float,
+    occurred_at: datetime,
+) -> Optional[Event]:
+    """Real buyers, not intraday churn: volume well above its trailing
+    20-day median AND most of it settled as delivery rather than being
+    squared off same-day. Runs on EOD bhavcopy, not live ticks."""
+    if not vol_median_20d or deliv_pct is None:
+        return None
+    ratio = volume / vol_median_20d
+    if ratio <= DELIVERY_VOLUME_MULTIPLE or deliv_pct <= DELIVERY_PCT_THRESHOLD:
+        return None
+
+    reason = (
+        f"{symbol} volume {ratio:.1f}x normal with {deliv_pct:.0f}% delivery — "
+        f"accumulation, not intraday churn."
+    )
+    evidence = {
+        "volume": volume,
+        "vol_median_20d": vol_median_20d,
+        "volume_ratio": ratio,
+        "deliv_pct": deliv_pct,
+    }
+    return Event(
+        symbol=symbol,
+        type="DELIVERY_CONVICTION",
+        score=ratio,
+        reason=reason,
+        evidence=evidence,
+        occurred_at=occurred_at,
+        fingerprint=_fingerprint(symbol, "DELIVERY_CONVICTION", occurred_at),
+    )
+
+
+def detect_block_trade(
+    symbol: str,
+    volume: float,
+    total_trades: Optional[float],
+    median_avg_trade_size: float,
+    occurred_at: datetime,
+) -> Optional[Event]:
+    """Who is trading: a handful of large-lot trades moving real size,
+    versus a crowd of small retail orders. Runs on EOD bhavcopy."""
+    if not total_trades or not median_avg_trade_size:
+        return None
+    avg_trade_size = volume / total_trades
+    ratio = avg_trade_size / median_avg_trade_size
+    if ratio <= BLOCK_TRADE_MULTIPLE:
+        return None
+
+    reason = f"{symbol}: {total_trades:,.0f} trades moved {volume:,.0f} shares — large-lot activity."
+    evidence = {
+        "volume": volume,
+        "total_trades": total_trades,
+        "avg_trade_size": avg_trade_size,
+        "median_avg_trade_size": median_avg_trade_size,
+        "ratio": ratio,
+    }
+    return Event(
+        symbol=symbol,
+        type="BLOCK_TRADE",
+        score=ratio,
+        reason=reason,
+        evidence=evidence,
+        occurred_at=occurred_at,
+        fingerprint=_fingerprint(symbol, "BLOCK_TRADE", occurred_at),
+    )
+
+
 if __name__ == "__main__":
     from datetime import timezone
 
