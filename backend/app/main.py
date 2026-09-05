@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Literal, Optional
 
 import httpx
 from fastapi import Cookie, FastAPI, HTTPException, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import text
 
@@ -67,15 +69,31 @@ def get_watchlist(response: Response, signal_user_id: Optional[str] = Cookie(def
             entry = {"symbol": symbol, "added_at": row["added_at"]}
             try:
                 quote = fetch_intraday_quote(symbol, client=client)
+                pct_change = (
+                    (quote.price - quote.prev_close) / quote.prev_close
+                    if quote.prev_close
+                    else None
+                )
                 entry.update(
                     price=quote.price,
+                    prev_close=quote.prev_close,
+                    pct_change=pct_change,
                     volume=quote.volume,
                     as_of=quote.as_of,
                     staleness=quote.staleness.value,
                     source=quote.source,
                 )
             except SourceError as exc:
-                entry.update(price=None, volume=None, as_of=None, staleness="unknown", source="yahoo", error=str(exc))
+                entry.update(
+                    price=None,
+                    prev_close=None,
+                    pct_change=None,
+                    volume=None,
+                    as_of=None,
+                    staleness="unknown",
+                    source="yahoo",
+                    error=str(exc),
+                )
             out.append(entry)
 
     return {"user_id": user_id, "watchlist": out}
@@ -174,3 +192,11 @@ def post_ack(body: AckRequest, response: Response, signal_user_id: Optional[str]
         ).first()
 
     return {"user_id": user_id, "symbol": body.symbol, "acked_at": row[0]}
+
+
+# Serves the built React app (frontend/dist) at "/" when present -- one
+# deploy, no CORS. Mounted last so it never shadows the /api/* routes above.
+# Missing during backend-only dev; harmless, just nothing at "/" until built.
+FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+if FRONTEND_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")

@@ -53,6 +53,7 @@ class Quote:
     fetched_at: datetime
     source: str
     staleness: StalenessTier
+    prev_close: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -164,6 +165,8 @@ def fetch_intraday_quote(symbol: str, client: Optional[httpx.Client] = None) -> 
         volumes = quote_block.get("volume") or []
         volume = next((v for v in reversed(volumes) if v is not None), 0)
 
+        prev_close = meta.get("previousClose", meta.get("chartPreviousClose"))
+
         return Quote(
             symbol=symbol,
             price=float(price),
@@ -172,6 +175,7 @@ def fetch_intraday_quote(symbol: str, client: Optional[httpx.Client] = None) -> 
             fetched_at=fetched_at,
             source="yahoo",
             staleness=staleness_tier(as_of, fetched_at),
+            prev_close=float(prev_close) if prev_close is not None else None,
         )
     finally:
         if owns_client:
