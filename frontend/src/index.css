@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Chewy&family=Press+Start+2P&family=Quicksand:wght@400;500;600;700&display=swap');
 
 :root {
   color-scheme: light;
@@ -23,7 +23,11 @@
 
 body {
   margin: 0;
-  background: linear-gradient(160deg, var(--bg-a) 0%, var(--bg-b) 45%, var(--bg-c) 100%);
+  background-color: var(--bg-a);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.72)),
+    repeating-linear-gradient(0deg, #ffb8d6 0 16px, transparent 16px 32px),
+    repeating-linear-gradient(90deg, #ffb8d6 0 16px, transparent 16px 32px);
   background-attachment: fixed;
   color: var(--text);
 }
@@ -44,10 +48,11 @@ body {
 
 .app-header h1 {
   margin: 0;
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 32px;
-  font-weight: 800;
+  font-family: 'Chewy', cursive;
+  font-size: 34px;
+  font-weight: 400;
   color: var(--accent);
+  text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.6);
 }
 
 .tagline {
@@ -95,9 +100,9 @@ body {
 
 .pane h2 {
   margin: 0 0 14px;
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 16px;
-  font-weight: 700;
+  font-family: 'Chewy', cursive;
+  font-size: 19px;
+  font-weight: 400;
   color: var(--accent);
 }
 
@@ -327,11 +332,44 @@ body {
   font-size: 12px;
 }
 
+.speech-bubble {
+  position: relative;
+  background: #ff8fc4;
+  border-radius: 10px;
+  box-shadow: 3px 3px 0 #c94e8c;
+  padding: 12px 14px 14px;
+  margin: 4px 0 16px;
+}
+
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  left: 18px;
+  bottom: -9px;
+  width: 12px;
+  height: 9px;
+  background: #ff8fc4;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  box-shadow: 3px 3px 0 #c94e8c;
+}
+
+.speech-bubble-tag {
+  display: block;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: #fff0f6;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+  opacity: 0.85;
+}
+
 .event-reason {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 13px;
-  line-height: 1.5;
-  color: #7a4d68;
+  line-height: 1.55;
+  color: #fff5fa;
+  font-weight: 600;
 }
 
 .event-footer {

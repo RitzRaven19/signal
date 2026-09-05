@@ -132,7 +132,10 @@ function EventCard({ event, onAck }) {
         </span>
         <span className="event-score">{event.score.toFixed(1)}σ</span>
       </div>
-      <p className="event-reason">{event.reason}</p>
+      <div className="speech-bubble">
+        <span className="speech-bubble-tag">the tea</span>
+        <p className="event-reason">{event.reason}</p>
+      </div>
       <div className="event-footer">
         <span className="event-time">{formatTime(event.occurred_at)}</span>
         <button className="link-btn" onClick={() => setOpen((v) => !v)}>
