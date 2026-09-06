@@ -9,7 +9,7 @@ yet, so staleness reflects Yahoo's own as_of, not a cache.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date as date_type, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal, Optional
 
@@ -19,8 +19,11 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import text
 
+from . import models, state_service
 from .db import get_engine
-from .sources import SourceError, fetch_intraday_quote
+from .detector import Event
+from .diff import diff_states, is_load_bearing
+from .sources import SourceError, fetch_daily_history, fetch_intraday_quote
 
 app = FastAPI(title="Signal")
 
@@ -192,6 +195,223 @@ def post_ack(body: AckRequest, response: Response, signal_user_id: Optional[str]
         ).first()
 
     return {"user_id": user_id, "symbol": body.symbol, "acked_at": row[0]}
+
+
+WATCHLIST_SINCE_QUERY = text(
+    """
+    select w.symbol, coalesce(a.acked_at, w.added_at) as since
+    from watchlist w
+    left join ack a on a.symbol = w.symbol and a.user_id = w.user_id
+    where w.user_id = :user_id
+    """
+)
+
+
+def _as_ist_date(value: datetime) -> date_type:
+    return value.astimezone(IST).date() if value.tzinfo else value.date()
+
+
+@app.get("/api/changed")
+def get_changed(response: Response, signal_user_id: Optional[str] = Cookie(default=None)):
+    """what_changed(t0, now) = state(now) - state(t0), per SPEC.md -- the
+    load-bearing gate, not the event log /api/feed shows. asserted_empty
+    is only ever true when we could actually compute state for at least
+    one symbol and found no difference; a symbol with too little price
+    history yet is reported in insufficient_history instead of being
+    folded into a false "nothing changed"."""
+    user_id = get_user_id(response, signal_user_id)
+    engine = get_engine()
+    today = datetime.now(IST).date()
+
+    with engine.connect() as conn:
+        rows = conn.execute(WATCHLIST_SINCE_QUERY, {"user_id": user_id}).mappings().all()
+
+    if not rows:
+        return {
+            "user_id": user_id,
+            "as_of": today.isoformat(),
+            "statements": [],
+            "asserted_empty": True,
+            "message": "nothing to check -- your watchlist is empty.",
+            "insufficient_history": [],
+        }
+
+    with httpx.Client() as client:
+        index_closes = state_service.get_index_closes(client)
+
+    statements_out: list[dict] = []
+    insufficient: list[dict] = []
+    any_evaluable = False
+
+    for row in rows:
+        symbol = row["symbol"]
+        since_date = _as_ist_date(row["since"])
+
+        t0 = state_service.compute_symbol_state(engine, symbol, since_date, index_closes)
+        now = state_service.compute_symbol_state(engine, symbol, today, index_closes)
+
+        if now.fully_blocked:
+            insufficient.append(
+                {
+                    "symbol": symbol,
+                    "days_available": now.days_available,
+                    "days_needed": state_service.DEFAULT_WINDOW * 2,
+                    "blocked_fields": list(now.blocked_fields),
+                }
+            )
+            continue
+
+        any_evaluable = True
+        from_id = models.upsert_state_snapshot(engine, t0.state)
+        to_id = models.upsert_state_snapshot(engine, now.state)
+
+        for statement in diff_states(t0.state, now.state):
+            models.insert_statement(engine, user_id, statement, from_id, to_id)
+            statements_out.append(
+                {
+                    "symbol": statement.symbol,
+                    "field": statement.field,
+                    "reason": statement.reason,
+                    "evidence": statement.evidence,
+                    "since": since_date.isoformat(),
+                }
+            )
+
+    if not any_evaluable:
+        return {
+            "user_id": user_id,
+            "as_of": today.isoformat(),
+            "statements": [],
+            "asserted_empty": False,
+            "message": f"not enough price history yet to tell -- {len(insufficient)} symbol(s) need more days of data.",
+            "insufficient_history": insufficient,
+        }
+
+    asserted_empty = len(statements_out) == 0
+    message = (
+        "nothing changed since you last checked."
+        if asserted_empty
+        else f"{len(statements_out)} thing(s) changed since you last checked."
+    )
+
+    return {
+        "user_id": user_id,
+        "as_of": today.isoformat(),
+        "statements": statements_out,
+        "asserted_empty": asserted_empty,
+        "message": message,
+        "insufficient_history": insufficient,
+    }
+
+
+QUIET_LOG_EVENTS_QUERY = text(
+    """
+    select e.symbol, e.type, e.score, e.reason, e.evidence, e.occurred_at
+    from events e
+    join watchlist w on w.symbol = e.symbol and w.user_id = :user_id
+    where e.occurred_at >= :since_floor
+    order by e.occurred_at desc
+    """
+)
+
+QUIET_LOG_LOOKBACK_DAYS = 30
+
+
+@app.get("/api/quiet-log")
+def get_quiet_log(response: Response, signal_user_id: Optional[str] = Cookie(default=None)):
+    """Events that cleared the residual gate but did NOT survive the
+    load-bearing gate -- fired, then reverted before they changed
+    anything lasting. This is the SUM(events) view this app deliberately
+    keeps out of /api/changed; it lives here, one click behind the net
+    view, so nothing is silently dropped."""
+    user_id = get_user_id(response, signal_user_id)
+    engine = get_engine()
+    today = datetime.now(IST).date()
+    since_floor = datetime.now(IST) - timedelta(days=QUIET_LOG_LOOKBACK_DAYS)
+
+    with engine.connect() as conn:
+        watchlist_rows = conn.execute(WATCHLIST_SINCE_QUERY, {"user_id": user_id}).mappings().all()
+        event_rows = conn.execute(QUIET_LOG_EVENTS_QUERY, {"user_id": user_id, "since_floor": since_floor}).mappings().all()
+
+    if not watchlist_rows:
+        return {"user_id": user_id, "events": [], "asserted_empty": True, "message": "your watchlist is empty."}
+
+    since_by_symbol = {row["symbol"]: _as_ist_date(row["since"]) for row in watchlist_rows}
+
+    with httpx.Client() as client:
+        index_closes = state_service.get_index_closes(client)
+
+    state_cache: dict[tuple, state_service.SymbolState] = {}
+
+    def state_for(symbol: str, as_of: date_type) -> state_service.SymbolState:
+        key = (symbol, as_of)
+        if key not in state_cache:
+            state_cache[key] = state_service.compute_symbol_state(engine, symbol, as_of, index_closes)
+        return state_cache[key]
+
+    quiet = []
+    for row in event_rows:
+        symbol = row["symbol"]
+        since_date = since_by_symbol.get(symbol)
+        if since_date is None:
+            continue  # event is for a symbol no longer on this user's watchlist
+
+        t0 = state_for(symbol, since_date)
+        now = state_for(symbol, today)
+        if now.fully_blocked:
+            continue  # not enough history to say either way -- unknown, not quiet
+
+        event = Event(
+            symbol=symbol,
+            type=row["type"],
+            score=row["score"],
+            reason=row["reason"],
+            evidence=row["evidence"],
+            occurred_at=row["occurred_at"],
+            fingerprint="",
+        )
+        if not is_load_bearing(event, t0.state, now.state):
+            quiet.append(
+                {
+                    "symbol": symbol,
+                    "type": row["type"],
+                    "reason": row["reason"],
+                    "occurred_at": row["occurred_at"],
+                    "score": row["score"],
+                }
+            )
+
+    return {
+        "user_id": user_id,
+        "as_of": today.isoformat(),
+        "events": quiet,
+        "asserted_empty": len(quiet) == 0,
+        "message": (
+            f"no fired-and-forgotten alerts in the last {QUIET_LOG_LOOKBACK_DAYS} days."
+            if not quiet
+            else f"{len(quiet)} alert(s) fired but didn't change anything lasting."
+        ),
+    }
+
+
+@app.get("/api/health/sources")
+def health_sources():
+    """Cheap reachability probe for the upstreams this app depends on --
+    proof the source answers, not a full quote. No DB, no persistence."""
+    checks: dict[str, dict] = {}
+    with httpx.Client() as client:
+        for name, probe in (
+            ("yahoo_quote", lambda: fetch_intraday_quote("RELIANCE.NS", client=client)),
+            ("yahoo_index", lambda: fetch_daily_history(state_service.INDEX_SYMBOL, range_="5d", client=client)),
+        ):
+            start = datetime.now(timezone.utc)
+            try:
+                probe()
+                latency_ms = (datetime.now(timezone.utc) - start).total_seconds() * 1000
+                checks[name] = {"ok": True, "latency_ms": round(latency_ms, 1)}
+            except SourceError as exc:
+                checks[name] = {"ok": False, "error": str(exc)}
+    return {"as_of": datetime.now(timezone.utc).isoformat(), "sources": checks}
 
 
 # Serves the built React app (frontend/dist) at "/" when present -- one

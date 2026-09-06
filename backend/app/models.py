@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import time
+from datetime import date as date_type
 from typing import Optional
 
 import pandas as pd
@@ -17,6 +18,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import OperationalError
 
 from .detector import Event
+from .diff import StateVector, Statement
 
 INSERT_EVENT_SQL = text(
     """
@@ -102,3 +104,104 @@ def insert_daily_bars(engine: Engine, bars: pd.DataFrame) -> int:
     for i in range(0, len(rows), DAILY_BAR_BATCH_SIZE):
         _execute_batch_with_retry(engine, rows[i : i + DAILY_BAR_BATCH_SIZE])
     return len(rows)
+
+
+GET_DAILY_BARS_UPTO_SQL = text(
+    """
+    select d, close, volume
+    from (
+        select d, close, volume
+        from daily_bars
+        where symbol = :symbol and d <= :as_of
+        order by d desc
+        limit :limit
+    ) recent
+    order by d asc
+    """
+)
+
+
+def get_daily_bars_upto(engine: Engine, symbol: str, as_of: date_type, limit: int) -> list[dict]:
+    """The trailing `limit` daily_bars rows for `symbol` ending on or
+    before `as_of`, oldest first -- exactly the shape diff.snapshot_state
+    wants for `closes`/`volumes`. Fewer than `limit` rows back just means
+    less history exists yet; callers decide what to do with that."""
+    with engine.connect() as conn:
+        rows = conn.execute(GET_DAILY_BARS_UPTO_SQL, {"symbol": symbol, "as_of": as_of, "limit": limit}).mappings().all()
+    return [dict(row) for row in rows]
+
+
+UPSERT_STATE_SNAPSHOT_SQL = text(
+    """
+    insert into state_snapshots
+        (symbol, as_of, volatility_regime, liquidity_regime, beta_to_index, range_position)
+    values
+        (:symbol, :as_of, :volatility_regime, :liquidity_regime, :beta_to_index, :range_position)
+    on conflict (symbol, as_of) do update set
+        volatility_regime = excluded.volatility_regime,
+        liquidity_regime = excluded.liquidity_regime,
+        beta_to_index = excluded.beta_to_index,
+        range_position = excluded.range_position,
+        computed_at = now()
+    returning id
+    """
+)
+
+
+def upsert_state_snapshot(engine: Engine, state: StateVector) -> int:
+    """Writes one StateVector as a row, keyed on (symbol, as_of) -- a
+    snapshot recomputed later (e.g. more history has since arrived)
+    overwrites in place rather than accumulating duplicates. Returns the
+    row id, needed as statements' from_snapshot_id/to_snapshot_id."""
+    with engine.begin() as conn:
+        row = conn.execute(
+            UPSERT_STATE_SNAPSHOT_SQL,
+            {
+                "symbol": state.symbol,
+                "as_of": state.as_of,
+                "volatility_regime": state.volatility_regime,
+                "liquidity_regime": state.liquidity_regime,
+                "beta_to_index": state.beta_to_index,
+                "range_position": state.range_position,
+            },
+        ).first()
+        return row[0]
+
+
+INSERT_STATEMENT_SQL = text(
+    """
+    insert into statements
+        (user_id, symbol, field, reason, evidence, from_snapshot_id, to_snapshot_id)
+    values
+        (:user_id, :symbol, :field, :reason, CAST(:evidence AS jsonb), :from_snapshot_id, :to_snapshot_id)
+    on conflict (user_id, symbol, field, to_snapshot_id) do nothing
+    returning id
+    """
+)
+
+
+def insert_statement(
+    engine: Engine,
+    user_id: str,
+    statement: Statement,
+    from_snapshot_id: int,
+    to_snapshot_id: int,
+) -> Optional[int]:
+    """Inserts one Statement, deduped on (user_id, symbol, field,
+    to_snapshot_id) -- recomputing /api/changed against the same "now"
+    snapshot never writes the same statement twice. Returns the new
+    row's id, or None if it was already recorded (not an error)."""
+    with engine.begin() as conn:
+        row = conn.execute(
+            INSERT_STATEMENT_SQL,
+            {
+                "user_id": user_id,
+                "symbol": statement.symbol,
+                "field": statement.field,
+                "reason": statement.reason,
+                "evidence": json.dumps(statement.evidence),
+                "from_snapshot_id": from_snapshot_id,
+                "to_snapshot_id": to_snapshot_id,
+            },
+        ).first()
+        return row[0] if row else None
