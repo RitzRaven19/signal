@@ -41,58 +41,33 @@ function formatPct(pct) {
   return `${sign}${(pct * 100).toFixed(1)}%`
 }
 
-function Mascot() {
+const MASCOT_SRC = {
+  happy: '/mascot/mascot-happy.jpg',
+  neutral: '/mascot/mascot-neutral.jpg',
+  confused: '/mascot/mascot-confused.jpg',
+  cat: '/mascot/mascot-cat.jpg',
+}
+
+function Mascot({ mood }) {
   return (
-    <svg width="110" height="124" viewBox="0 0 150 170" className="mascot">
-      <ellipse cx="75" cy="158" rx="34" ry="7" fill="#f5b8d6" opacity="0.5" />
-      <g transform="rotate(-8 75 85)">
-        <path
-          d="M52 55 C30 60 20 90 32 112 C38 122 50 118 50 105 C44 92 46 70 58 58 Z"
-          fill="#ff8fc4"
-        />
-        <path
-          d="M98 55 C120 60 130 90 118 112 C112 122 100 118 100 105 C106 92 104 70 92 58 Z"
-          fill="#ff8fc4"
-        />
-        <ellipse cx="55" cy="140" rx="10" ry="16" fill="#b58af0" transform="rotate(30 55 140)" />
-        <ellipse cx="98" cy="142" rx="10" ry="16" fill="#b58af0" transform="rotate(-18 98 142)" />
-        <ellipse cx="48" cy="153" rx="9" ry="6" fill="#5c3350" />
-        <ellipse cx="108" cy="150" rx="9" ry="6" fill="#5c3350" />
-        <rect x="46" y="88" width="58" height="52" rx="26" fill="#c9a8f5" />
-        <path
-          d="M62 100 l8 8 6 -6 8 10 6 -8"
-          stroke="#ffffff"
-          strokeWidth="3"
-          fill="none"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <ellipse cx="52" cy="118" rx="9" ry="16" fill="#c9a8f5" transform="rotate(18 52 118)" />
-        <ellipse cx="98" cy="118" rx="9" ry="16" fill="#c9a8f5" transform="rotate(-18 98 118)" />
-        <g transform="translate(60 108)">
-          <ellipse cx="15" cy="18" rx="16" ry="13" fill="#ffffff" />
-          <circle cx="15" cy="4" r="11" fill="#ffffff" />
-          <path d="M6 -2 L9 6 L14 -1 Z" fill="#ffffff" />
-          <path d="M24 -2 L21 6 L16 -1 Z" fill="#ffffff" />
-          <circle cx="11" cy="4" r="1.4" fill="#5c3350" />
-          <circle cx="19" cy="4" r="1.4" fill="#5c3350" />
-          <path d="M12 8 Q15 10 18 8" stroke="#5c3350" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-        </g>
-        <circle cx="75" cy="62" r="30" fill="#ffe3cf" />
-        <path d="M46 55 C50 30 100 30 104 55 C96 44 54 44 46 55 Z" fill="#ff8fc4" />
-        <circle cx="64" cy="63" r="3" fill="#5c3350" />
-        <circle cx="86" cy="63" r="3" fill="#5c3350" />
-        <circle cx="58" cy="72" r="5" fill="#ff9fc9" opacity="0.7" />
-        <circle cx="92" cy="72" r="5" fill="#ff9fc9" opacity="0.7" />
-        <path d="M68 76 Q75 81 82 76" stroke="#5c3350" strokeWidth="2" fill="none" strokeLinecap="round" />
-      </g>
-    </svg>
+    <div className="mascot-frame">
+      <img src={MASCOT_SRC[mood] || MASCOT_SRC.neutral} alt="Signal mascot" />
+    </div>
   )
+}
+
+// happy when most tracked stocks are up, confused when a feed has gone
+// stale (we'd rather flag that than show a wrong price), cat while the
+// watchlist is still empty, neutral otherwise.
+function moodFor(watchlist) {
+  if (watchlist.length === 0) return 'cat'
+  if (watchlist.some((r) => r.staleness === 'stale')) return 'confused'
+  const up = watchlist.filter((r) => r.pct_change > 0).length
+  return up > watchlist.length / 2 ? 'happy' : 'neutral'
 }
 
 function WatchlistRow({ row, onRemove }) {
   const pct = formatPct(row.pct_change)
-  const emoji = row.pct_change == null ? '' : row.pct_change >= 0 ? '🚀' : '😢'
   return (
     <li className="watch-row">
       <div className="watch-row-main">
@@ -104,11 +79,7 @@ function WatchlistRow({ row, onRemove }) {
             no data
           </span>
         )}
-        {pct && (
-          <span className={`change ${row.pct_change >= 0 ? 'up' : 'down'}`}>
-            {emoji} {pct}
-          </span>
-        )}
+        {pct && <span className={`change ${row.pct_change >= 0 ? 'up' : 'down'}`}>{pct}</span>}
       </div>
       <div className="watch-row-meta">
         <StalenessBadge tier={row.staleness} />
@@ -162,6 +133,21 @@ export default function App() {
   const [lens, setLens] = useState('since_last')
   const [newSymbol, setNewSymbol] = useState('')
   const [error, setError] = useState(null)
+  const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30000)
+    return () => clearInterval(id)
+  }, [])
+
+  const mood = moodFor(watchlist)
+  const staleCount = watchlist.filter((r) => r.staleness === 'stale').length
+  const delayedCount = watchlist.filter((r) => r.staleness === 'delayed').length
+  const feedLabel = staleCount > 0
+    ? `${staleCount} feed${staleCount > 1 ? 's' : ''} stale`
+    : delayedCount > 0
+      ? `${delayedCount} feed${delayedCount > 1 ? 's' : ''} delayed`
+      : 'live'
 
   const refreshWatchlist = useCallback(async () => {
     try {
@@ -234,12 +220,31 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="app-header-text">
-          <h1>Signal 💗</h1>
-          <p className="tagline">what changed for your girlies (the stocks) today ✨</p>
+        <div className="wordmark">
+          <span className="l-s">S</span>
+          <span className="l-i">i</span>
+          <span className="l-g">g</span>
+          <span className="l-n">n</span>
+          <span className="l-a">a</span>
+          <span className="l-l">l</span>
         </div>
-        <Mascot />
+        <div className="header-right">
+          <div className="header-status">
+            <div className="clock">
+              {now.toLocaleString('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </div>
+            <div className="feed-label">{feedLabel}</div>
+          </div>
+          <Mascot mood={mood} />
+        </div>
       </header>
+      <p className="tagline">what changed for your girlies (the stocks) today ✨</p>
 
       {error && <div className="error-banner">{error}</div>}
 
@@ -280,6 +285,7 @@ export default function App() {
               ))}
             </div>
           </div>
+          <p className="inbox-subtitle">only moves that cleared your noise filter</p>
           {feed.length === 0 ? (
             <p className="empty">nothing unexplained right now 🌸</p>
           ) : (
