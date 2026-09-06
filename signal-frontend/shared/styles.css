@@ -1,0 +1,127 @@
+/* Signal Watchlist — shared design tokens, fonts, gingham background.
+   Extracted from Signal Watchlist.dc.html so every screen file can stay
+   standalone HTML/CSS without repeating font or background data. */
+
+:root {
+  --signal-pink: #E91E8C;
+  --signal-pink-dark: #B8135F;
+  --signal-ink: #6E2244;
+  --signal-ink-soft: #A8567A;
+  --signal-bg: #fffafc;
+  --signal-card-border: #FFD6E5;
+  --signal-card-border-soft: #FFE4EE;
+  --signal-card-bg-soft: #FFF7FA;
+  --signal-tint: #FFEFF5;
+  --signal-chip-pink: #FFC2D8;
+  --signal-accent-rose: #F58BA6;
+  --signal-accent-mauve: #C96A8B;
+  --signal-down: #9A6B85;
+  --signal-neutral-chip: #C4A7B4;
+  --signal-warm-bg: #F7EFE9;
+  --signal-warm-border: #E9DCD2;
+  --signal-warm-ink: #8A6274;
+  --signal-pixel-border: #2B2B2B;
+  --signal-pixel-bg: #F58BA6;
+}
+
+/* Only the latin subset is kept locally — the original export duplicated
+   ~19 @font-face blocks (plus devanagari/vietnamese/cyrillic/greek subsets
+   never used by this English-language UI) across every screen. Rare
+   glyphs (e.g. ⭐) fall back to the system sans-serif below instead. */
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/anton-latin-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Baloo 2';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('./fonts/baloo2-latin-variable.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/playfair-display-latin-normal-700.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/playfair-display-latin-italic-700.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Press Start 2P';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/press-start-2p-latin-400.woff2') format('woff2');
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+/* The gingham background, shared by every screen */
+body {
+  background-color: var(--signal-bg);
+  background-image:
+    repeating-linear-gradient(90deg, rgba(255,141,173,.42) 0 22px, rgba(0,0,0,0) 22px 44px),
+    repeating-linear-gradient(0deg, rgba(255,141,173,.42) 0 22px, rgba(0,0,0,0) 22px 44px);
+  font-family: 'Baloo 2', system-ui, sans-serif;
+  color: var(--signal-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--signal-pink); text-decoration: none; }
+a:hover { color: var(--signal-pink-dark); }
+input, button { font-family: 'Baloo 2', system-ui, sans-serif; }
+
+.signal-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 22px 14px 40px;
+  box-sizing: border-box;
+}
+
+.signal-shell {
+  width: 100%;
+  max-width: 430px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Mascot + prototype animations */
+@keyframes sway { 0%, 100% { transform: rotate(-2.2deg) translateY(0); } 50% { transform: rotate(2.2deg) translateY(-4px); } }
+@keyframes bunnyRun { 0% { width: 6%; } 100% { width: 96%; } }
+@keyframes pop { 0% { transform: scale(.86); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes blinkdot { 0%, 80% { opacity: 1; } 90% { opacity: .25; } 100% { opacity: 1; } }
+
+/* ── Web layout ─────────────────────────────────────────────────────
+   screens-web/*.html reuse the exact mobile header, card, nav-bar and
+   row markup (same inline styles) so the web version reads as the
+   same app, just wider. These two rules are the only addition: a wide
+   variant of .signal-shell, and a two-column arrangement for its
+   cards on desktop. */
+
+.signal-shell--wide { max-width: 1100px; }
+
+.web-columns { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+@media (max-width: 860px) { .web-columns { grid-template-columns: 1fr; } }
