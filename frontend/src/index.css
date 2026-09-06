@@ -573,3 +573,59 @@ body {
   color: var(--muted);
   overflow-x: auto;
 }
+
+/* The asserted-empty / insufficient-history state. Not an afterthought --
+   SPEC.md treats "nothing changed" as a real, asserted result, so it
+   gets its own card instead of a bare line of muted text. */
+.notice-card {
+  background: var(--panel-soft);
+  border: 2px dashed var(--border);
+  border-radius: 18px;
+  padding: 16px 18px;
+}
+
+.notice-headline {
+  margin: 0 0 6px;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--accent-dark);
+}
+
+.notice-body {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.insufficient-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.notice-asof {
+  margin: 10px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.quiet-card {
+  opacity: 0.82;
+}
+
+.quiet-reason {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}

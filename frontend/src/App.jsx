@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { getWatchlist, addSymbol, removeSymbol, getFeed, ackSymbol } from './api'
+import { getWatchlist, addSymbol, removeSymbol, getChanged, getQuietLog, ackSymbol } from './api'
 
 const POLL_MS = 15000
 
@@ -91,11 +91,59 @@ function WatchlistRow({ row, onRemove }) {
   )
 }
 
-function EventCard({ event, onAck }) {
+const FIELD_LABEL = {
+  volatility_regime: 'volatility',
+  liquidity_regime: 'liquidity',
+  beta_to_index: 'market sensitivity (beta)',
+  range_position: 'position in its recent range',
+}
+
+const FIELD_EMOJI = {
+  volatility_regime: '🌊',
+  liquidity_regime: '💧',
+  beta_to_index: '🎯',
+  range_position: '📍',
+}
+
+// A Statement is a net state diff (what_changed), not a raw event -- see
+// SPEC.md. It carries no occurred_at (it's a diff between two snapshots,
+// not a point in time), so "seen it" just advances the symbol's
+// watermark to right now.
+function StatementCard({ statement, onAck }) {
   const [open, setOpen] = useState(false)
-  const emoji = EVENT_EMOJI[event.type] || '✨'
+  const emoji = FIELD_EMOJI[statement.field] || '✨'
   return (
     <li className="event-card">
+      <div className="event-header">
+        <span className="event-symbol">{statement.symbol}</span>
+        <span className="event-type-chip">
+          {emoji} {FIELD_LABEL[statement.field] || statement.field}
+        </span>
+      </div>
+      <div className="speech-bubble">
+        <span className="speech-bubble-tag">the tea</span>
+        <p className="event-reason">{statement.reason}</p>
+      </div>
+      <div className="event-footer">
+        <span className="event-time">since {statement.since}</span>
+        <button className="link-btn" onClick={() => setOpen((v) => !v)}>
+          {open ? '🙈 hide why' : '🔍 why?'}
+        </button>
+        <button className="ack-btn" onClick={() => onAck(statement.symbol)}>
+          💗 seen it!
+        </button>
+      </div>
+      {open && <pre className="evidence">{JSON.stringify(statement.evidence, null, 2)}</pre>}
+    </li>
+  )
+}
+
+// Read-only -- an event that fired and reverted before it changed
+// anything lasting. Nothing to ack; it never made it into the main view.
+function QuietLogCard({ event }) {
+  const emoji = EVENT_EMOJI[event.type] || '✨'
+  return (
+    <li className="event-card quiet-card">
       <div className="event-header">
         <span className="event-symbol">{event.symbol}</span>
         <span className="event-type-chip">
@@ -103,34 +151,24 @@ function EventCard({ event, onAck }) {
         </span>
         <span className="event-score">{event.score.toFixed(1)}σ</span>
       </div>
-      <div className="speech-bubble">
-        <span className="speech-bubble-tag">the tea</span>
-        <p className="event-reason">{event.reason}</p>
-      </div>
+      <p className="event-reason quiet-reason">{event.reason}</p>
       <div className="event-footer">
-        <span className="event-time">{formatTime(event.occurred_at)}</span>
-        <button className="link-btn" onClick={() => setOpen((v) => !v)}>
-          {open ? '🙈 hide why' : '🔍 why?'}
-        </button>
-        <button className="ack-btn" onClick={() => onAck(event)}>
-          💗 seen it!
-        </button>
+        <span className="event-time">{formatTime(event.occurred_at)} · reverted, didn't last</span>
       </div>
-      {open && <pre className="evidence">{JSON.stringify(event.evidence, null, 2)}</pre>}
     </li>
   )
 }
 
-const LENSES = [
-  { key: 'since_last', label: 'since last ✨' },
-  { key: 'today', label: 'today' },
-  { key: 'since_added', label: 'since added' },
+const INBOX_TABS = [
+  { key: 'changed', label: 'since last ✨' },
+  { key: 'quiet', label: 'quiet log' },
 ]
 
 export default function App() {
   const [watchlist, setWatchlist] = useState([])
-  const [feed, setFeed] = useState([])
-  const [lens, setLens] = useState('since_last')
+  const [changed, setChanged] = useState(null)
+  const [quietLog, setQuietLog] = useState(null)
+  const [inboxTab, setInboxTab] = useState('changed')
   const [newSymbol, setNewSymbol] = useState('')
   const [error, setError] = useState(null)
   const [now, setNow] = useState(() => new Date())
@@ -159,31 +197,48 @@ export default function App() {
     }
   }, [])
 
-  const refreshFeed = useCallback(async (currentLens) => {
+  const refreshChanged = useCallback(async () => {
     try {
-      const data = await getFeed(currentLens)
-      setFeed(data.events)
+      setChanged(await getChanged())
     } catch (err) {
       setError(err.message)
     }
   }, [])
 
-  useEffect(() => {
-    refreshWatchlist()
-  }, [refreshWatchlist])
+  const refreshQuietLog = useCallback(async () => {
+    try {
+      setQuietLog(await getQuietLog())
+    } catch (err) {
+      setError(err.message)
+    }
+  }, [])
+
+  // Any request that lacks the signal_user_id cookie makes get_user_id()
+  // mint a fresh anonymous one -- and a browser's cookie-jar write from
+  // one response isn't guaranteed to be visible to a fetch() fired in
+  // the same tick as that response resolves. Firing these three
+  // concurrently, even back-to-back right after a cookie-establishing
+  // call, could still race: one of the three would occasionally go out
+  // cookie-less, mint its own identity, and whichever Set-Cookie landed
+  // last became the one the browser kept -- silently orphaning
+  // whatever the others had just written. Strictly sequencing them
+  // (never firing the next until the previous has actually resolved)
+  // removes the race instead of just narrowing it.
+  const refreshAll = useCallback(async () => {
+    await refreshWatchlist()
+    await refreshChanged()
+    await refreshQuietLog()
+  }, [refreshWatchlist, refreshChanged, refreshQuietLog])
 
   useEffect(() => {
-    refreshFeed(lens)
-  }, [lens, refreshFeed])
+    refreshAll()
+  }, [refreshAll])
 
   // Single poll loop for both panes -- no WebSockets/SSE for v1.
   useEffect(() => {
-    const id = setInterval(() => {
-      refreshWatchlist()
-      refreshFeed(lens)
-    }, POLL_MS)
+    const id = setInterval(refreshAll, POLL_MS)
     return () => clearInterval(id)
-  }, [lens, refreshWatchlist, refreshFeed])
+  }, [refreshAll])
 
   const handleAdd = async (e) => {
     e.preventDefault()
@@ -192,7 +247,7 @@ export default function App() {
     try {
       await addSymbol(symbol)
       setNewSymbol('')
-      refreshWatchlist()
+      await refreshAll()
     } catch (err) {
       setError(err.message)
     }
@@ -201,17 +256,19 @@ export default function App() {
   const handleRemove = async (symbol) => {
     try {
       await removeSymbol(symbol)
-      refreshWatchlist()
+      await refreshAll()
     } catch (err) {
       setError(err.message)
     }
   }
 
   // Ack is per-symbol, explicit action only -- never fires on page load.
-  const handleAck = async (event) => {
+  // A Statement has no occurred_at (it's a diff, not a point in time),
+  // so acking one advances that symbol's watermark to right now.
+  const handleAck = async (symbol) => {
     try {
-      await ackSymbol(event.symbol, event.occurred_at)
-      refreshFeed(lens)
+      await ackSymbol(symbol, new Date().toISOString())
+      await refreshChanged()
     } catch (err) {
       setError(err.message)
     }
@@ -274,26 +331,63 @@ export default function App() {
           <div className="inbox-header">
             <h2>💌 since you last peeked</h2>
             <div className="lens-switcher">
-              {LENSES.map((l) => (
+              {INBOX_TABS.map((t) => (
                 <button
-                  key={l.key}
-                  className={lens === l.key ? 'lens-btn active' : 'lens-btn'}
-                  onClick={() => setLens(l.key)}
+                  key={t.key}
+                  className={inboxTab === t.key ? 'lens-btn active' : 'lens-btn'}
+                  onClick={() => setInboxTab(t.key)}
                 >
-                  {l.label}
+                  {t.label}
                 </button>
               ))}
             </div>
           </div>
-          <p className="inbox-subtitle">only moves that cleared your noise filter</p>
-          {feed.length === 0 ? (
-            <p className="empty">nothing unexplained right now 🌸</p>
+
+          {inboxTab === 'changed' ? (
+            <>
+              <p className="inbox-subtitle">what_changed(t0, now) -- not a log of everything that happened</p>
+              {!changed ? null : changed.statements.length > 0 ? (
+                <ul className="event-list">
+                  {changed.statements.map((s) => (
+                    <StatementCard key={`${s.symbol}-${s.field}`} statement={s} onAck={handleAck} />
+                  ))}
+                </ul>
+              ) : (
+                <div className="notice-card">
+                  <p className="notice-headline">
+                    {changed.asserted_empty ? '✨ nothing changed' : '📊 still learning your stocks'}
+                  </p>
+                  <p className="notice-body">{changed.message}</p>
+                  {changed.insufficient_history?.length > 0 && (
+                    <ul className="insufficient-list">
+                      {changed.insufficient_history.map((h) => (
+                        <li key={h.symbol}>
+                          <span className="symbol">{h.symbol}</span>: {h.days_available}/{h.days_needed} days of price
+                          history so far
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="notice-asof">data current as of {changed.as_of}</p>
+                </div>
+              )}
+            </>
           ) : (
-            <ul className="event-list">
-              {feed.map((event) => (
-                <EventCard key={event.fingerprint} event={event} onAck={handleAck} />
-              ))}
-            </ul>
+            <>
+              <p className="inbox-subtitle">alerts that fired, then reverted before they changed anything lasting</p>
+              {!quietLog ? null : quietLog.events.length > 0 ? (
+                <ul className="event-list">
+                  {quietLog.events.map((e) => (
+                    <QuietLogCard key={`${e.symbol}-${e.type}-${e.occurred_at}`} event={e} />
+                  ))}
+                </ul>
+              ) : (
+                <div className="notice-card">
+                  <p className="notice-headline">🌸 quiet log is empty</p>
+                  <p className="notice-body">{quietLog.message}</p>
+                </div>
+              )}
+            </>
           )}
         </section>
       </main>
