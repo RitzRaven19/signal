@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Optional
 
@@ -37,7 +37,25 @@ class StalenessTier(str, Enum):
     LIVE = "live"
     DELAYED = "delayed"
     STALE = "stale"
+    CLOSED = "closed"   # market shut; as_of is the last session's close -- current, not lagging
     UNKNOWN = "unknown"
+
+
+IST = timezone(timedelta(hours=5, minutes=30))
+NSE_OPEN = (9, 15)
+NSE_CLOSE = (15, 30)
+# A last-session close stays "closed", not "unknown", across a weekend.
+CLOSED_MAX_AGE = 4 * 24 * 3600
+
+
+def nse_is_open(now: datetime) -> bool:
+    """Mon-Fri 09:15-15:30 IST. Exchange holidays aren't modeled -- on a
+    holiday this says open, and prices fall through to delayed/stale,
+    which errs toward flagging rather than falsely reassuring."""
+    t = now.astimezone(IST)
+    if t.weekday() >= 5:
+        return False
+    return NSE_OPEN <= (t.hour, t.minute) < NSE_CLOSE
 
 
 class SourceError(RuntimeError):
@@ -65,11 +83,15 @@ class DailyBar:
 
 
 def staleness_tier(as_of: Optional[datetime], now: Optional[datetime] = None) -> StalenessTier:
-    """live (<2min) / delayed (<15min) / stale (<60min) / unknown (older, or no as_of)."""
+    """While NSE is open: live (<2min) / delayed (<15min) / stale (<60min) /
+    unknown (older). While it's shut, a price from the last few days is
+    `closed` -- the last close is the current price, not a lagging one."""
     if as_of is None:
         return StalenessTier.UNKNOWN
     now = now or datetime.now(timezone.utc)
     age_seconds = max(0.0, (now - as_of).total_seconds())
+    if not nse_is_open(now):
+        return StalenessTier.CLOSED if age_seconds < CLOSED_MAX_AGE else StalenessTier.UNKNOWN
     if age_seconds < LIVE_MAX_AGE:
         return StalenessTier.LIVE
     if age_seconds < DELAYED_MAX_AGE:

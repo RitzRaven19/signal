@@ -105,9 +105,11 @@ def _volatility_regime(closes: Sequence[float], window: int) -> Optional[str]:
     that's rolled out of both windows stops affecting the reading at
     all, same as it stops affecting range_position. Needs 2 full
     windows of returns."""
-    rets = log_returns(closes)
-    if len(rets) < window * 2:
+    # Check length before log_returns -- it raises on <2 closes (e.g. a
+    # ticker bhavcopy doesn't list at all), and this should report None.
+    if len(closes) < window * 2 + 1:
         return None
+    rets = log_returns(closes)
     baseline_sigma = float(np.std(rets[-window * 2 : -window]))
     recent_sigma = float(np.std(rets[-window:]))
     if baseline_sigma == 0:
