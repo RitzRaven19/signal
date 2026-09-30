@@ -7,8 +7,14 @@ const STALENESS_LABEL = {
   live: '✅ LIVE',
   delayed: '⏳ DELAYED',
   stale: '😴 STALE',
+  closed: '🌙 MARKET CLOSED',
   unknown: '❓ UNKNOWN',
 }
+
+// One definition, shared by the mood, the bubble, the header and at-a-glance,
+// so she can never say "all feeds ok" next to "4 feeds lagging". A
+// market-closed price is the correct last close, not a lagging one.
+const isLagging = (r) => r.price == null || r.staleness === 'stale' || r.staleness === 'unknown'
 
 const EVENT_EMOJI = {
   RESIDUAL_MOVE: '🚀',
@@ -48,10 +54,35 @@ const MASCOT_SRC = {
   cat: '/mascot/mascot-cat.jpg',
 }
 
-function Mascot({ mood }) {
+// `key={mood}` remounts the <img> when her mood changes, so the
+// mascot-swap fade replays instead of the photo snapping over.
+function Mascot({ mood, hopping = false }) {
   return (
-    <div className="mascot-frame">
-      <img src={MASCOT_SRC[mood] || MASCOT_SRC.neutral} alt="Signal mascot" />
+    <div className={hopping ? 'mascot-frame hopping' : 'mascot-frame'}>
+      <img key={mood} src={MASCOT_SRC[mood] || MASCOT_SRC.neutral} alt={`Signal mascot, ${mood}`} />
+    </div>
+  )
+}
+
+// The mockup's loading screen: the bunny runs the bar while the first
+// watchlist fetch is in flight.
+function LoadingCard({ count }) {
+  return (
+    <div className="loading-card" role="status" aria-live="polite">
+      <div className="loading-title">loading</div>
+      <div className="loading-track">
+        <div className="loading-fill" />
+        <div className="loading-runner">
+          <div className="bunny">
+            <span className="ear ear-l" />
+            <span className="ear ear-r" />
+            <span className="bunny-face">• ᴗ •</span>
+          </div>
+        </div>
+      </div>
+      <div className="loading-caption">
+        {count ? `checking on your ${count} friends…` : 'checking on your friends…'}
+      </div>
     </div>
   )
 }
@@ -61,33 +92,111 @@ function Mascot({ mood }) {
 // watchlist is still empty, neutral otherwise.
 function moodFor(watchlist) {
   if (watchlist.length === 0) return 'cat'
-  if (watchlist.some((r) => r.staleness === 'stale')) return 'confused'
+  if (watchlist.some(isLagging)) return 'confused'
   const up = watchlist.filter((r) => r.pct_change > 0).length
   return up > watchlist.length / 2 ? 'happy' : 'neutral'
 }
 
 function WatchlistRow({ row, onRemove }) {
   const pct = formatPct(row.pct_change)
+  const dir = row.pct_change == null ? 'flat' : row.pct_change >= 0 ? 'up' : 'down'
   return (
     <li className="watch-row">
-      <div className="watch-row-main">
-        <span className="symbol">{row.symbol}</span>
+      <div className="watch-row-id">
+        <span className="symbol">{row.symbol.replace(/\.NS$/, '')}</span>
+        <StalenessBadge tier={row.staleness} />
+      </div>
+      <div className="watch-row-quote">
         {row.price != null ? (
-          <span className="price">₹{row.price.toFixed(2)}</span>
+          <span className="price">₹{row.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         ) : (
           <span className="price price-error" title={row.error}>
             no data
           </span>
         )}
-        {pct && <span className={`change ${row.pct_change >= 0 ? 'up' : 'down'}`}>{pct}</span>}
+        <span className={`change ${dir}`}>{pct ?? '—'}</span>
       </div>
-      <div className="watch-row-meta">
-        <StalenessBadge tier={row.staleness} />
-        <button className="remove-btn" onClick={() => onRemove(row.symbol)} title="Remove from watchlist">
-          ×
-        </button>
-      </div>
+      <button className="remove-btn" onClick={() => onRemove(row.symbol)} title={`Remove ${row.symbol}`}>
+        ×
+      </button>
     </li>
+  )
+}
+
+// The mockup's "feeling good" card, driven by the real watchlist. Clicking
+// her toggles the pixel speech bubble with the day's one-line summary.
+function MoodCard({ watchlist, mood }) {
+  const [open, setOpen] = useState(false)
+  const [hopping, setHopping] = useState(false)
+  const tap = () => {
+    setOpen((v) => !v)
+    setHopping(true)
+  }
+  const up = watchlist.filter((r) => r.pct_change > 0).length
+  const down = watchlist.filter((r) => r.pct_change < 0).length
+  const stale = watchlist.filter(isLagging).length
+  const closed = watchlist.some((r) => r.staleness === 'closed')
+  const n = watchlist.length
+
+  const label = { happy: 'feeling good', neutral: 'all quiet', confused: 'signal unclear', cat: 'hi bestie' }[mood]
+  const line =
+    n === 0
+      ? "add a stock and i'll start keeping an eye on it for you."
+      : stale > 0
+        ? `a feed is lagging on ${stale} of your ${n}. i'd rather flag it than guess.`
+        : up > n / 2
+          ? `${up} of your ${n} ${closed ? 'closed up' : 'are up today'}.`
+          : `${up} up, ${down} down${closed ? ' at the close' : ''}. nothing loud yet.`
+  const bubble =
+    n === 0
+      ? 'NOTHING TO WATCH\nYET. ADD ONE!'
+      : `${up} UP · ${down} DOWN\n${stale ? `${stale} FEED${stale > 1 ? 'S' : ''} LAGGING` : closed ? 'MARKET CLOSED' : 'ALL FEEDS OK'}`
+
+  return (
+    <section className="pane mood-card">
+      <button
+        className="mood-mascot"
+        onClick={tap}
+        onAnimationEnd={(e) => e.animationName === 'hop' && setHopping(false)}
+        title="tap her for today's summary"
+      >
+        <Mascot mood={mood} hopping={hopping} />
+      </button>
+      <div className="mood-body">
+        <span className="mood-label">{label}</span>
+        <p className="mood-line">{line}</p>
+        {open ? (
+          <div className="pixel-bubble">{bubble}</div>
+        ) : (
+          <p className="mood-hint">tap her for today's summary</p>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function AtAGlance({ watchlist, changed }) {
+  const up = watchlist.filter((r) => r.pct_change > 0).length
+  const lagging = watchlist.filter(isLagging).length
+  const statements = changed?.statements?.length ?? 0
+  const rows = [
+    ['tracked', watchlist.length, 'accent'],
+    ['up today', watchlist.length ? `${up} of ${watchlist.length}` : '—', 'accent'],
+    ['feeds lagging', lagging, lagging ? 'muted' : 'accent'],
+    ['changes to read', statements, statements ? 'accent' : 'muted'],
+  ]
+  return (
+    <section className="pane glance">
+      <h2>at a glance</h2>
+      <ul className="glance-list">
+        {rows.map(([k, v, tone]) => (
+          <li key={k}>
+            <span>{k}</span>
+            <span className={`glance-pill ${tone}`}>{v}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 
@@ -172,6 +281,7 @@ export default function App() {
   const [newSymbol, setNewSymbol] = useState('')
   const [error, setError] = useState(null)
   const [now, setNow] = useState(() => new Date())
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 30000)
@@ -179,13 +289,16 @@ export default function App() {
   }, [])
 
   const mood = moodFor(watchlist)
-  const staleCount = watchlist.filter((r) => r.staleness === 'stale').length
+  const staleCount = watchlist.filter(isLagging).length
   const delayedCount = watchlist.filter((r) => r.staleness === 'delayed').length
+  const allClosed = watchlist.length > 0 && watchlist.every((r) => r.staleness === 'closed')
   const feedLabel = staleCount > 0
-    ? `${staleCount} feed${staleCount > 1 ? 's' : ''} stale`
+    ? `${staleCount} feed${staleCount > 1 ? 's' : ''} lagging`
     : delayedCount > 0
       ? `${delayedCount} feed${delayedCount > 1 ? 's' : ''} delayed`
-      : 'live'
+      : allClosed
+        ? 'market closed · last close'
+        : 'live'
 
   const refreshWatchlist = useCallback(async () => {
     try {
@@ -231,7 +344,7 @@ export default function App() {
   }, [refreshWatchlist, refreshChanged, refreshQuietLog])
 
   useEffect(() => {
-    refreshAll()
+    refreshAll().finally(() => setLoaded(true))
   }, [refreshAll])
 
   // Single poll loop for both panes -- no WebSockets/SSE for v1.
@@ -298,14 +411,22 @@ export default function App() {
             </div>
             <div className="feed-label">{feedLabel}</div>
           </div>
-          <Mascot mood={mood} />
         </div>
       </header>
       <p className="tagline">what changed for your girlies (the stocks) today ✨</p>
 
       {error && <div className="error-banner">{error}</div>}
 
+      {!loaded ? (
+        <LoadingCard count={watchlist.length} />
+      ) : (
       <main className="layout">
+        <aside className="col-side">
+          <MoodCard watchlist={watchlist} mood={mood} />
+          <AtAGlance watchlist={watchlist} changed={changed} />
+        </aside>
+
+        <div className="col-main">
         <section className="pane watchlist-pane">
           <h2>🐾 my watchlist</h2>
           <form className="add-form" onSubmit={handleAdd}>
@@ -338,6 +459,9 @@ export default function App() {
                   onClick={() => setInboxTab(t.key)}
                 >
                   {t.label}
+                  {t.key === 'changed' && changed?.statements?.length > 0 && (
+                    <span className="unread-dot" aria-label="new changes" />
+                  )}
                 </button>
               ))}
             </div>
@@ -390,7 +514,9 @@ export default function App() {
             </>
           )}
         </section>
+        </div>
       </main>
+      )}
     </div>
   )
 }

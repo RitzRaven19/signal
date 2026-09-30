@@ -210,15 +210,309 @@ body {
 
 .layout {
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-areas: 'main side';
   gap: 16px;
   align-items: start;
 }
 
-@media (max-width: 760px) {
+.col-main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.col-side {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: sticky;
+  top: 16px;
+}
+
+/* On phones the mascot card leads -- same order as the mobile mockup. */
+@media (max-width: 860px) {
   .layout {
     grid-template-columns: 1fr;
+    grid-template-areas: 'side' 'main';
   }
+  .col-side {
+    position: static;
+  }
+}
+
+.mood-card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.mood-mascot {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.mood-mascot:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.mood-mascot .mascot-frame {
+  width: 84px;
+  height: 84px;
+}
+
+.mood-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.mood-label {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 2px 10px;
+  margin-bottom: 6px;
+}
+
+.mood-line {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text);
+  text-wrap: pretty;
+}
+
+.mood-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+@keyframes pop {
+  from { transform: scale(0.86); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.pixel-bubble {
+  position: relative;
+  margin-top: 12px;
+  background: var(--pixel-bg);
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8.5px;
+  line-height: 1.8;
+  white-space: pre-line;
+  padding: 9px 10px;
+  border: 3px solid var(--pixel-border);
+  box-shadow: 4px 4px 0 var(--pixel-border);
+  animation: pop 0.18s ease-out;
+}
+.pixel-bubble::after {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: -10px;
+  width: 9px;
+  height: 9px;
+  background: var(--pixel-bg);
+  border-left: 3px solid var(--pixel-border);
+  border-top: 3px solid var(--pixel-border);
+  transform: rotate(45deg);
+}
+
+.glance h2 {
+  font-size: 17px;
+}
+
+.glance-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.glance-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.glance-pill {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-variant-numeric: tabular-nums;
+}
+.glance-pill.accent { background: var(--accent); }
+.glance-pill.muted { background: var(--neutral-chip); }
+
+/* ── Mascot motion, ported from the design file's keyframes ── */
+
+@keyframes hop {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.mascot-frame.hopping {
+  animation: hop 0.32s ease-in-out 2;
+}
+
+@keyframes mascot-swap {
+  from { opacity: 0; transform: scale(1.08); }
+  to { opacity: 1; transform: scale(1); }
+}
+.mascot-frame img {
+  animation: mascot-swap 0.45s ease-out;
+}
+
+@keyframes blinkdot {
+  0%, 80% { opacity: 1; }
+  90% { opacity: 0.25; }
+  100% { opacity: 1; }
+}
+.unread-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 6px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: currentColor;
+  animation: blinkdot 2.4s ease-in-out infinite;
+}
+
+/* The loading screen: bunny runs the bar left to right. */
+@keyframes bunnyRun {
+  from { width: 6%; }
+  to { width: 96%; }
+}
+
+.loading-card {
+  position: relative;
+  max-width: 460px;
+  margin: 40px auto;
+  background: #f79eb6;
+  border-radius: 26px;
+  padding: 30px 22px;
+  box-shadow: 0 10px 26px rgba(233, 30, 140, 0.22);
+}
+/* scalloped top and bottom edges */
+.loading-card::before,
+.loading-card::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 18px;
+  background-size: 22px 22px;
+  background-repeat: repeat-x;
+}
+.loading-card::before {
+  top: -9px;
+  background-image: radial-gradient(circle at 11px 11px, #f79eb6 10px, transparent 11px);
+}
+.loading-card::after {
+  bottom: -9px;
+  background-image: radial-gradient(circle at 11px 7px, #f79eb6 10px, transparent 11px);
+}
+
+.loading-title {
+  text-align: center;
+  font-size: 26px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 14px;
+}
+
+.loading-track {
+  position: relative;
+  height: 34px;
+  border: 3px solid #fff;
+  border-radius: 6px;
+}
+
+.loading-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.4);
+  animation: bunnyRun 2.4s ease-in-out infinite alternate;
+}
+
+.loading-runner {
+  position: absolute;
+  top: -8px;
+  left: 0;
+  height: 0;
+  animation: bunnyRun 2.4s ease-in-out infinite alternate;
+}
+
+.bunny {
+  position: absolute;
+  right: -17px;
+  top: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2.5px solid #e4809c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: hop 0.5s ease-in-out infinite;
+}
+.bunny .ear {
+  position: absolute;
+  top: -9px;
+  width: 6px;
+  height: 12px;
+  background: #fff;
+  border: 2.5px solid #e4809c;
+  border-radius: 4px;
+}
+.bunny .ear-l { left: 9px; transform: rotate(-10deg); }
+.bunny .ear-r { left: 18px; transform: rotate(12deg); }
+.bunny-face {
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #e4809c;
+}
+
+.loading-caption {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot-frame,
+  .mascot-frame img,
+  .pixel-bubble,
+  .unread-dot,
+  .bunny,
+  .loading-fill,
+  .loading-runner {
+    animation: none;
+  }
+  .loading-fill { width: 60%; }
 }
 
 .pane {
@@ -307,21 +601,39 @@ body {
 
 .watch-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   background: var(--panel-soft);
   border: 2px solid var(--border-soft);
   border-radius: 18px;
-  padding: 10px 13px;
+  padding: 10px 12px 10px 14px;
+  transition: border-color 0.12s, background 0.12s;
+}
+.watch-row:hover {
+  border-color: var(--pixel-bg);
+  background: var(--tint);
 }
 
-.watch-row-main {
-  display: flex;
-  align-items: baseline;
-  gap: 9px;
-  flex-wrap: wrap;
+.watch-row-id {
+  flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.watch-row-quote {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  min-width: 90px;
+}
+
+.change.flat {
+  background: var(--neutral-chip);
 }
 
 .symbol {
@@ -360,13 +672,6 @@ body {
   background: var(--down);
 }
 
-.watch-row-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: none;
-}
-
 .remove-btn {
   width: 24px;
   height: 24px;
@@ -403,6 +708,11 @@ body {
 .badge-stale {
   background: #f0e6ea;
   color: var(--down);
+}
+
+.badge-closed {
+  background: #efe7f7;
+  color: #7b5aa6;
 }
 
 .badge-unknown {
