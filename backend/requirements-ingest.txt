@@ -1,0 +1,4 @@
+# The web app (requirements.txt) plus what only the bhavcopy jobs need.
+# Kept separate so the Render web service doesn't install the NSE client.
+-r requirements.txt
+nse==4.0.1

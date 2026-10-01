@@ -1,0 +1,29 @@
+name: Daily bhavcopy ingest
+
+# NSE publishes the delivery bhavcopy around 18:00 IST. 13:45 UTC = 19:15 IST.
+# Missed or unpublished days are caught up on the next run (see ingest_daily.py),
+# and the daily DB touch keeps the free-tier Supabase project from auto-pausing.
+on:
+  schedule:
+    - cron: "45 13 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-ingest.txt
+      - run: pip install -r requirements-ingest.txt
+      - name: Ingest and run EOD detectors
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -u ingest_daily.py
