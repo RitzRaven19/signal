@@ -381,8 +381,33 @@ const AVERAGES = [
   ['sma200', '200d avg', 200],
 ]
 
-function PriceChart({ bars }) {
-  const [range, setRange] = useState('3m')
+// Fund ranges are by calendar days: the chart starts at the last NAV on or
+// before that date, the same base the backend's fund returns use.
+export const FUND_RANGES = [
+  ['1m', { days: 30 }],
+  ['6m', { days: 182 }],
+  ['1y', { days: 365 }],
+  ['3y', { days: 365 * 3 }],
+  ['5y', { days: 365 * 5 }],
+  ['all', { days: Infinity }],
+]
+
+function pointCount(bars, spec) {
+  if (typeof spec === 'number') return spec
+  if (spec.days === Infinity) return bars.length
+  const target = new Date(new Date(bars[bars.length - 1].t).getTime() - spec.days * 86400000).toISOString().slice(0, 10)
+  let start = 0
+  for (let i = bars.length - 1; i >= 0; i--) {
+    if (bars[i].t <= target) {
+      start = i
+      break
+    }
+  }
+  return bars.length - start
+}
+
+export function PriceChart({ bars, ranges = RANGES, defaultRange = '3m', withAverages = true }) {
+  const [range, setRange] = useState(defaultRange)
   const [hover, setHover] = useState(null)
   const [shown, setShown] = useState({ sma50: false, sma200: false })
   const closesAll = useMemo(() => bars.map((b) => b.c), [bars])
@@ -390,7 +415,7 @@ function PriceChart({ bars }) {
     () => Object.fromEntries(AVERAGES.map(([key, , n]) => [key, sma(closesAll, n)])),
     [closesAll],
   )
-  const count = RANGES.find((r) => r[0] === range)[1]
+  const count = pointCount(bars, ranges.find((r) => r[0] === range)[1])
   const pts = useMemo(() => bars.slice(-count), [bars, count])
   const lines = AVERAGES.filter(([key]) => shown[key]).map(([key, label]) => [key, label, averages[key].slice(-count)])
   if (pts.length < 2) return <p className="empty">not enough price history to draw a chart.</p>
@@ -451,7 +476,7 @@ function PriceChart({ bars }) {
           )}
         </span>
         <div className="lens-switcher">
-          {RANGES.map(([r]) => (
+          {ranges.map(([r]) => (
             <button key={r} className={range === r ? 'lens-btn active' : 'lens-btn'} onClick={() => setRange(r)}>
               {r}
             </button>
@@ -491,19 +516,21 @@ function PriceChart({ bars }) {
           </>
         )}
       </svg>
-      <div className="chart-toggles">
-        {AVERAGES.map(([key, label, n]) => (
-          <button
-            key={key}
-            className={`avg-toggle avg-${key}${shown[key] ? ' on' : ''}`}
-            onClick={() => setShown((v) => ({ ...v, [key]: !v[key] }))}
-            disabled={closesAll.length < n}
-            title={closesAll.length < n ? `needs ${n} days of history` : `average close of the last ${n} trading days`}
-          >
-            <i aria-hidden="true" /> {label}
-          </button>
-        ))}
-      </div>
+      {withAverages && (
+        <div className="chart-toggles">
+          {AVERAGES.map(([key, label, n]) => (
+            <button
+              key={key}
+              className={`avg-toggle avg-${key}${shown[key] ? ' on' : ''}`}
+              onClick={() => setShown((v) => ({ ...v, [key]: !v[key] }))}
+              disabled={closesAll.length < n}
+              title={closesAll.length < n ? `needs ${n} days of history` : `average close of the last ${n} trading days`}
+            >
+              <i aria-hidden="true" /> {label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

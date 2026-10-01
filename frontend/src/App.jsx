@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState, useCallback, useRef } from 'react'
 import { getWatchlist, addSymbol, removeSymbol, getChanged, getQuietLog, ackSymbol } from './api'
 import { replyAsync, QUICK_REPLIES } from './mascotChat'
 import { MarketView, ScansView, StockSheet, SymbolSearch } from './market'
+import { FundSheet, FundsView } from './funds'
 
 const POLL_MS = 15000
 
@@ -461,6 +462,7 @@ const VIEWS = [
   { key: 'mine', label: '🐾 my stocks' },
   { key: 'market', label: '📈 market' },
   { key: 'scans', label: '✨ scans' },
+  { key: 'funds', label: '💰 funds' },
 ]
 
 const INBOX_TABS = [
@@ -476,6 +478,8 @@ export default function App() {
   const [view, setView] = useState('mine')
   const [openSymbol, setOpenSymbol] = useState(null)
   const closeSheet = useCallback(() => setOpenSymbol(null), [])
+  const [openFund, setOpenFund] = useState(null)
+  const closeFund = useCallback(() => setOpenFund(null), [])
   const [error, setError] = useState(null)
   const [now, setNow] = useState(() => new Date())
   const [loaded, setLoaded] = useState(false)
@@ -641,6 +645,7 @@ export default function App() {
           </>
         )}
         {view === 'scans' && <ScansView onOpen={setOpenSymbol} />}
+        {view === 'funds' && <FundsView onOpen={setOpenFund} />}
         {view === 'mine' && (
         <>
         <section className="pane watchlist-pane">
@@ -741,6 +746,7 @@ export default function App() {
           onClose={closeSheet}
         />
       )}
+      {openFund && <FundSheet code={openFund} onClose={closeFund} />}
     </div>
   )
 }

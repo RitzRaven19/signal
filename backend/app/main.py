@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from . import market, models, state_service
+from . import funds, market, models, state_service
 from .db import get_engine
 from .detector import Event
 from .diff import diff_states, is_load_bearing
@@ -480,6 +480,22 @@ def get_scan(scan: str, limit: int = 25):
 @app.get("/api/search")
 def search(q: str = ""):
     return {"q": q, "results": market.search_symbols(get_engine(), q)}
+
+
+@app.get("/api/funds/search")
+def search_funds(q: str = ""):
+    try:
+        return {"q": q, "results": funds.search_funds(q)}
+    except funds.FundError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
+@app.get("/api/funds/{code}")
+def get_fund(code: int):
+    try:
+        return funds.get_fund(code)
+    except funds.FundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 
 @app.get("/api/stock/{symbol}")

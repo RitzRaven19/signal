@@ -45,3 +45,7 @@ export const ackSymbol = (symbol, seenUntil) =>
     method: 'POST',
     body: JSON.stringify({ symbol, seen_until: seenUntil }),
   })
+
+export const searchFunds = (q) => request(`/funds/search?q=${encodeURIComponent(q)}`)
+
+export const getFund = (code) => request(`/funds/${encodeURIComponent(code)}`)

@@ -1787,3 +1787,42 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .chat-typing span { animation: none; }
 }
+
+.fund-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fund-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+.fund-tags em {
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--accent-dark);
+  background: var(--tint);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 0 7px;
+}
+.fund-sheet-title {
+  font-size: 19px !important;
+}
+.fund-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.fund-returns {
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+}
+.return-sub {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+}
