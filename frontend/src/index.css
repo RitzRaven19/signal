@@ -189,12 +189,61 @@ body {
   box-shadow: 0 4px 12px rgba(233, 30, 140, 0.25);
   animation: sway 4.5s ease-in-out infinite;
 }
-.mascot-frame img {
-  width: 126%;
-  height: 126%;
-  object-fit: cover;
-  margin: -13% 0 0 -13%;
+.mascot-frame {
+  background: #ffd6e5;
+}
+
+.chibi {
   display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Each moving part rotates/scales around its own box, not the SVG origin. */
+.chibi-blink,
+.chibi-mouth,
+.chibi-tail,
+.chibi-cat {
+  transform-box: fill-box;
+}
+
+@keyframes chibi-blink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.1); }
+}
+.chibi-blink {
+  transform-origin: center;
+  animation: chibi-blink 4.2s ease-in-out infinite;
+}
+
+@keyframes chibi-tail-sway {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+.chibi-tail {
+  transform-origin: 50% 0%; /* hinge at the ribbon */
+  animation: chibi-tail-sway 3.2s ease-in-out infinite;
+}
+.chibi-tail-r {
+  animation-delay: -1.6s;
+}
+
+@keyframes chibi-talk {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.35); }
+}
+.chibi.talking .chibi-mouth {
+  transform-origin: center;
+  animation: chibi-talk 0.22s ease-in-out infinite;
+}
+
+@keyframes chibi-cat-peek {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(6deg); }
+}
+.chibi-cat {
+  transform-origin: 50% 100%;
+  animation: chibi-cat-peek 2.6s ease-in-out infinite;
 }
 
 .error-banner {
@@ -455,8 +504,8 @@ body {
   outline-offset: 3px;
 }
 .mood-mascot .mascot-frame {
-  width: 84px;
-  height: 84px;
+  width: 92px;
+  height: 92px;
 }
 
 .mood-body {
@@ -569,7 +618,7 @@ body {
   from { opacity: 0; transform: scale(1.08); }
   to { opacity: 1; transform: scale(1); }
 }
-.mascot-frame img {
+.mascot-frame .chibi {
   animation: mascot-swap 0.45s ease-out;
 }
 
@@ -696,7 +745,11 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .mascot-frame,
-  .mascot-frame img,
+  .mascot-frame .chibi,
+  .chibi-blink,
+  .chibi-tail,
+  .chibi-cat,
+  .chibi.talking .chibi-mouth,
   .pixel-bubble,
   .unread-dot,
   .chat-msg,

@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState, useCallback, useRef } from 'react'
 import { getWatchlist, addSymbol, removeSymbol, getChanged, getQuietLog, ackSymbol } from './api'
 import { reply, QUICK_REPLIES } from './mascotChat'
+import Chibi from './Chibi'
 
 const POLL_MS = 15000
 
@@ -48,19 +49,12 @@ function formatPct(pct) {
   return `${sign}${(pct * 100).toFixed(1)}%`
 }
 
-const MASCOT_SRC = {
-  happy: '/mascot/mascot-happy.jpg',
-  neutral: '/mascot/mascot-neutral.jpg',
-  confused: '/mascot/mascot-confused.jpg',
-  cat: '/mascot/mascot-cat.jpg',
-}
-
-// `key={mood}` remounts the <img> when her mood changes, so the
-// mascot-swap fade replays instead of the photo snapping over.
-function Mascot({ mood, hopping = false }) {
+// `key={mood}` remounts the drawing when her mood changes, so the
+// mascot-swap fade replays instead of the expression snapping over.
+function Mascot({ mood, hopping = false, talking = false }) {
   return (
     <div className={hopping ? 'mascot-frame hopping' : 'mascot-frame'}>
-      <img key={mood} src={MASCOT_SRC[mood] || MASCOT_SRC.neutral} alt={`Signal mascot, ${mood}`} />
+      <Chibi key={mood} mood={mood} talking={talking} />
     </div>
   )
 }
@@ -129,6 +123,15 @@ function WatchlistRow({ row, onRemove }) {
 function MoodCard({ watchlist, changed, mood }) {
   const [open, setOpen] = useState(false)
   const [hopping, setHopping] = useState(false)
+  const [talking, setTalking] = useState(false)
+  const talkTimer = useRef(null)
+  const speak = () => {
+    setHopping(true)
+    setTalking(true)
+    clearTimeout(talkTimer.current)
+    talkTimer.current = setTimeout(() => setTalking(false), 1600)
+  }
+  useEffect(() => () => clearTimeout(talkTimer.current), [])
   const tap = () => {
     setOpen((v) => !v)
     setHopping(true)
@@ -162,7 +165,7 @@ function MoodCard({ watchlist, changed, mood }) {
           onAnimationEnd={(e) => e.animationName === 'hop' && setHopping(false)}
           title="tap her for today's summary"
         >
-          <Mascot mood={mood} hopping={hopping} />
+          <Mascot mood={mood} hopping={hopping} talking={talking} />
         </button>
         <div className="mood-body">
           <span className="mood-label">{label}</span>
@@ -174,7 +177,7 @@ function MoodCard({ watchlist, changed, mood }) {
           )}
         </div>
       </div>
-      <MascotChat watchlist={watchlist} changed={changed} mood={mood} onReply={() => setHopping(true)} />
+      <MascotChat watchlist={watchlist} changed={changed} mood={mood} onReply={speak} />
     </section>
   )
 }
