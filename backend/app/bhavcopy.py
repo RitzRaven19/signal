@@ -53,11 +53,14 @@ def fetch_delivery_bhavcopy(date: datetime) -> Path:
         try:
             with NSE(download_folder=str(DATA_DIR)) as nse:
                 return nse.deliveryBhavcopy(date)
-        except (FileNotFoundError, RuntimeError) as exc:
+        except FileNotFoundError as exc:
             # NSE has no bhavcopy for this date (weekend/holiday/not yet
             # published) -- retrying won't help, fail fast.
             raise BhavcopyUnavailable(f"No delivery bhavcopy for {date.date()}: {exc}") from exc
-        except (httpx.TransportError, httpx.HTTPStatusError) as exc:
+        except (RuntimeError, httpx.TransportError, httpx.HTTPStatusError) as exc:
+            # The nse client raises RuntimeError for transient failures too:
+            # Sept 14/16/18 all came back "unavailable" mid-run and downloaded
+            # fine on retry. Retry it like a network error.
             # NSE's WAF resets connections on occasion -- transient, retry.
             last_exc = exc
             if attempt < MAX_ATTEMPTS:

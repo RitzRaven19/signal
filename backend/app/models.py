@@ -91,10 +91,17 @@ def insert_events(engine: Engine, events: list[Event]) -> int:
         return len(conn.execute(INSERT_EVENTS_BATCH_SQL, {"rows": json.dumps(rows)}).all())
 
 
+# One statement per batch (rows passed as a JSON array), not executemany:
+# executemany is one round trip per row, which made a single day's
+# ~2,600-row upsert take ~220s against Supabase.
 INSERT_DAILY_BAR_SQL = text(
     """
     insert into daily_bars (symbol, d, close, volume, deliv_pct, total_trades)
-    values (:symbol, :d, :close, :volume, :deliv_pct, :total_trades)
+    select symbol, d, close, volume, deliv_pct, total_trades
+    from jsonb_to_recordset(CAST(:rows AS jsonb)) as r(
+        symbol text, d date, close double precision, volume bigint,
+        deliv_pct double precision, total_trades bigint
+    )
     on conflict (symbol, d) do update set
         close = excluded.close,
         volume = excluded.volume,
@@ -118,7 +125,7 @@ def _execute_batch_with_retry(engine: Engine, batch: list) -> None:
     for attempt in range(1, DB_MAX_ATTEMPTS + 1):
         try:
             with engine.begin() as conn:
-                conn.execute(INSERT_DAILY_BAR_SQL, batch)
+                conn.execute(INSERT_DAILY_BAR_SQL, {"rows": json.dumps(batch)})
             return
         except OperationalError as exc:
             last_exc = exc
@@ -137,7 +144,15 @@ def insert_daily_bars(engine: Engine, bars: pd.DataFrame) -> int:
     so this sends a few hundred rows per round trip instead."""
     if bars.empty:
         return 0
-    rows = bars.where(pd.notnull(bars), None).to_dict(orient="records")
+    # JSON-safe rows: numpy scalars -> Python, dates -> ISO, NaN -> null
+    # (a NaN deliv_pct would otherwise serialize as invalid JSON).
+    rows = [
+        {
+            k: (None if pd.isna(v) else v.isoformat() if hasattr(v, "isoformat") else v.item() if hasattr(v, "item") else v)
+            for k, v in rec.items()
+        }
+        for rec in bars.to_dict(orient="records")
+    ]
     for i in range(0, len(rows), DAILY_BAR_BATCH_SIZE):
         _execute_batch_with_retry(engine, rows[i : i + DAILY_BAR_BATCH_SIZE])
     return len(rows)
