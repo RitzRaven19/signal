@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { getWatchlist, addSymbol, removeSymbol, getChanged, getQuietLog, ackSymbol } from './api'
+import { reply, QUICK_REPLIES } from './mascotChat'
 
 const POLL_MS = 15000
 
@@ -125,7 +126,7 @@ function WatchlistRow({ row, onRemove }) {
 
 // The mockup's "feeling good" card, driven by the real watchlist. Clicking
 // her toggles the pixel speech bubble with the day's one-line summary.
-function MoodCard({ watchlist, mood }) {
+function MoodCard({ watchlist, changed, mood }) {
   const [open, setOpen] = useState(false)
   const [hopping, setHopping] = useState(false)
   const tap = () => {
@@ -154,24 +155,93 @@ function MoodCard({ watchlist, mood }) {
 
   return (
     <section className="pane mood-card">
-      <button
-        className="mood-mascot"
-        onClick={tap}
-        onAnimationEnd={(e) => e.animationName === 'hop' && setHopping(false)}
-        title="tap her for today's summary"
-      >
-        <Mascot mood={mood} hopping={hopping} />
-      </button>
-      <div className="mood-body">
-        <span className="mood-label">{label}</span>
-        <p className="mood-line">{line}</p>
-        {open ? (
-          <div className="pixel-bubble">{bubble}</div>
-        ) : (
-          <p className="mood-hint">tap her for today's summary</p>
-        )}
+      <div className="mood-top">
+        <button
+          className="mood-mascot"
+          onClick={tap}
+          onAnimationEnd={(e) => e.animationName === 'hop' && setHopping(false)}
+          title="tap her for today's summary"
+        >
+          <Mascot mood={mood} hopping={hopping} />
+        </button>
+        <div className="mood-body">
+          <span className="mood-label">{label}</span>
+          <p className="mood-line">{line}</p>
+          {open ? (
+            <div className="pixel-bubble">{bubble}</div>
+          ) : (
+            <p className="mood-hint">tap her for today's summary</p>
+          )}
+        </div>
       </div>
+      <MascotChat watchlist={watchlist} changed={changed} mood={mood} onReply={() => setHopping(true)} />
     </section>
+  )
+}
+
+// Talk to her. Runs entirely in the browser (see mascotChat.js) -- free,
+// no API, and every answer is read off the same live data as the page.
+function MascotChat({ watchlist, changed, mood, onReply }) {
+  const [chatOpen, setChatOpen] = useState(false)
+  const [messages, setMessages] = useState([
+    { from: 'her', text: "hiii! ask me what changed, how your stocks are doing, or about any stock by name." },
+  ])
+  const [draft, setDraft] = useState('')
+  const listRef = useRef(null)
+
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
+  }, [messages, chatOpen])
+
+  const ask = (text) => {
+    if (!text.trim()) return
+    const answer = reply(text, { watchlist, changed, mood })
+    setMessages((m) => [...m, { from: 'you', text }, { from: 'her', text: answer }])
+    setDraft('')
+    onReply()
+  }
+
+  if (!chatOpen) {
+    return (
+      <button className="chat-toggle" onClick={() => setChatOpen(true)}>
+        💬 talk to me
+      </button>
+    )
+  }
+
+  return (
+    <div className="chat">
+      <div className="chat-head">
+        <span>chatting with signal</span>
+        <button className="chat-close" onClick={() => setChatOpen(false)} aria-label="close chat">
+          ×
+        </button>
+      </div>
+      <ul className="chat-log" ref={listRef} aria-live="polite">
+        {messages.map((m, i) => (
+          <li key={i} className={`chat-msg from-${m.from}`}>
+            {m.text}
+          </li>
+        ))}
+      </ul>
+      <div className="chat-chips">
+        {QUICK_REPLIES.map((q) => (
+          <button key={q} className="chat-chip" onClick={() => ask(q)}>
+            {q}
+          </button>
+        ))}
+      </div>
+      <form
+        className="chat-form"
+        onSubmit={(e) => {
+          e.preventDefault()
+          ask(draft)
+        }}
+      >
+        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="ask me something…" aria-label="message" />
+        <button type="submit">send</button>
+      </form>
+    </div>
   )
 }
 
@@ -422,7 +492,7 @@ export default function App() {
       ) : (
       <main className="layout">
         <aside className="col-side">
-          <MoodCard watchlist={watchlist} mood={mood} />
+          <MoodCard watchlist={watchlist} changed={changed} mood={mood} />
           <AtAGlance watchlist={watchlist} changed={changed} />
         </aside>
 
