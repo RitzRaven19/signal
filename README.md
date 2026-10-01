@@ -8,7 +8,7 @@ Around that core it's a full, free market companion: market overview, readymade 
 
 **Live:** https://signal-jagk.onrender.com (free tier — the first visit after a while can take 30–60s to wake up)
 
-![Signal market view](docs/screenshot.png)
+![Signal market view](docs/screenshot-market.png)
 
 ## 100-word pitch
 
