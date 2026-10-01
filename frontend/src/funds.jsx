@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import { getFund, searchFunds } from './api'
 import { FUND_RANGES, PriceChart, fmtPct } from './market'
-import { GroovyText } from './groovy'
+import { GroovyText, MiniLoader } from './groovy'
 
 const dir = (p) => (p == null ? 'flat' : p >= 0 ? 'up' : 'down')
 const fmtNav = (n) => (n == null ? '—' : `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`)
@@ -73,7 +73,7 @@ export function FundsView({ onOpen }) {
       {!submitted ? (
         <p className="inbox-subtitle">pick a starter above or search any fund. every Indian mutual fund is here, with its full NAV history.</p>
       ) : !results && !error ? (
-        <p className="empty">looking through every scheme…</p>
+        <MiniLoader text="looking through every scheme…" />
       ) : results?.length === 0 ? (
         <div className="notice-card">
           <p className="notice-headline">🌸 no funds matched</p>
@@ -151,7 +151,7 @@ export function FundSheet({ code, onClose }) {
             <p className="notice-body">{error}</p>
           </div>
         ) : !data ? (
-          <p className="empty">loading the fund's NAV history…</p>
+          <MiniLoader text="loading the fund's NAV history…" />
         ) : (
           <>
             <div className="sheet-head">

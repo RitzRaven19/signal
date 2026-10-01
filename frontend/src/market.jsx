@@ -3,7 +3,7 @@
 // and type; only layout pieces specific to them live in index.css.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getMarket, getScan, getStock, searchSymbols } from './api'
-import { GroovyText } from './groovy'
+import { GroovyText, MiniLoader } from './groovy'
 
 const bare = (s) => (s || '').replace(/\.NS$/, '')
 export const fmtPct = (p) => (p == null ? '—' : `${p >= 0 ? '+' : ''}${(p * 100).toFixed(2)}%`)
@@ -210,7 +210,7 @@ export function MarketView({ onOpen }) {
   }, [])
 
   if (error) return <div className="error-banner">{error}</div>
-  if (!data) return <p className="empty">fetching the market…</p>
+  if (!data) return <MiniLoader text="fetching the market…" />
 
   const lists = [
     ['gainers', '🚀 top gainers'],
@@ -312,7 +312,7 @@ export function ScansView({ onOpen }) {
       <p className="inbox-subtitle">{SCAN_WHY[scan]}</p>
       {error && <div className="error-banner">{error}</div>}
       {!data ? (
-        <p className="empty">scanning ~2,600 companies…</p>
+        <MiniLoader text="scanning ~2,600 companies…" />
       ) : data.results.length === 0 ? (
         <div className="notice-card">
           <p className="notice-headline">🌸 nothing matched today</p>
@@ -679,7 +679,7 @@ export function StockSheet({ symbol, inWatchlist, onAdd, onClose }) {
             <p className="notice-body">{error}</p>
           </div>
         ) : !data ? (
-          <p className="empty">loading {bare(symbol)}…</p>
+          <MiniLoader text={`loading ${bare(symbol)}…`} />
         ) : (
           <>
             <div className="sheet-head">
