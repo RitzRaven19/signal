@@ -19,11 +19,11 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from . import models, state_service
+from . import market, models, state_service
 from .db import get_engine
 from .detector import Event
 from .diff import diff_states, is_load_bearing
-from .sources import SourceError, fetch_daily_history, fetch_intraday_quote
+from .sources import SourceError, fetch_daily_history, fetch_intraday_quote, fetch_stock_chart
 
 app = FastAPI(title="Signal")
 
@@ -391,6 +391,82 @@ def get_quiet_log(response: Response, signal_user_id: Optional[str] = Cookie(def
             if not quiet
             else f"{len(quiet)} alert(s) fired but didn't change anything lasting."
         ),
+    }
+
+
+INDICES = [("^NSEI", "NIFTY 50"), ("^BSESN", "SENSEX"), ("^NSEBANK", "BANK NIFTY")]
+
+
+@app.get("/api/market")
+def get_market():
+    """Market overview: the main indices (live from Yahoo) plus today's
+    movers across every listed NSE company (from the ingested bhavcopy)."""
+    engine = get_engine()
+    indices = []
+    with httpx.Client() as client:
+        for symbol, label in INDICES:
+            try:
+                q = fetch_intraday_quote(symbol, client=client)
+                indices.append({
+                    "symbol": symbol, "name": label, "price": q.price, "prev_close": q.prev_close,
+                    "pct_change": (q.price - q.prev_close) / q.prev_close if q.prev_close else None,
+                    "as_of": q.as_of, "staleness": q.staleness.value,
+                })
+            except SourceError:
+                indices.append({"symbol": symbol, "name": label, "price": None, "error": "unavailable"})
+    return {
+        "as_of_date": market.latest_date(engine),
+        "indices": indices,
+        "movers": {s: market.run_scan(engine, s, limit=5) for s in ("gainers", "losers", "most_active")},
+        "scans": market.SCANS,
+    }
+
+
+@app.get("/api/scans/{scan}")
+def get_scan(scan: str, limit: int = 25):
+    if scan not in market.SCANS:
+        raise HTTPException(status_code=404, detail=f"unknown scan '{scan}'")
+    engine = get_engine()
+    return {
+        "scan": scan,
+        "title": market.SCANS[scan],
+        "as_of_date": market.latest_date(engine),
+        "results": market.run_scan(engine, scan, limit=min(max(limit, 1), 50)),
+    }
+
+
+@app.get("/api/search")
+def search(q: str = ""):
+    return {"q": q, "results": market.search_symbols(get_engine(), q)}
+
+
+@app.get("/api/stock/{symbol}")
+def get_stock(symbol: str):
+    """Stock page: identity, day and 52-week stats and a year of daily bars
+    from Yahoo, plus delivery %, trade count, average volume and recent
+    alerts from our own NSE data."""
+    symbol = symbol.upper()
+    engine = get_engine()
+    try:
+        chart = fetch_stock_chart(symbol)
+    except SourceError as exc:
+        raise HTTPException(status_code=404, detail=f"no market data for {symbol}: {exc}")
+    return {
+        "symbol": symbol,
+        "name": market.instrument_name(engine, symbol) or chart.name,
+        "exchange": chart.exchange,
+        "price": chart.price,
+        "prev_close": chart.prev_close,
+        "pct_change": (chart.price - chart.prev_close) / chart.prev_close if chart.price and chart.prev_close else None,
+        "day_high": chart.day_high,
+        "day_low": chart.day_low,
+        "volume": chart.volume,
+        "week52_high": chart.week52_high,
+        "week52_low": chart.week52_low,
+        "as_of": chart.as_of,
+        "staleness": chart.staleness.value,
+        "bars": chart.bars,
+        **market.stock_stats(engine, symbol),
     }
 
 

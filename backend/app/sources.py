@@ -163,6 +163,80 @@ def fetch_daily_history(
             client.close()
 
 
+@dataclass(frozen=True)
+class StockChart:
+    """Everything a stock page needs from one Yahoo call: the identity and
+    day/52-week stats from `meta`, plus daily OHLCV bars."""
+    symbol: str
+    name: Optional[str]
+    exchange: Optional[str]
+    currency: Optional[str]
+    price: Optional[float]
+    prev_close: Optional[float]
+    day_high: Optional[float]
+    day_low: Optional[float]
+    volume: Optional[int]
+    week52_high: Optional[float]
+    week52_low: Optional[float]
+    as_of: Optional[datetime]
+    staleness: StalenessTier
+    bars: list  # [{"t": iso date, "o","h","l","c": float, "v": int}]
+
+
+def fetch_stock_chart(symbol: str, range_: str = "1y", client: Optional[httpx.Client] = None) -> StockChart:
+    owns_client = client is None
+    client = client or httpx.Client(timeout=REQUEST_TIMEOUT)
+    try:
+        payload = _get_with_retry(client, YAHOO_CHART_URL.format(symbol=symbol), {"range": range_, "interval": "1d"})
+        result = _extract_result(payload, symbol)
+        meta = result["meta"]
+        q = result["indicators"]["quote"][0]
+        bars = []
+        for i, ts in enumerate(result.get("timestamp") or []):
+            c = q["close"][i]
+            if c is None:
+                continue  # Yahoo pads holidays/halts with null rows
+            bars.append({
+                "t": datetime.fromtimestamp(ts, tz=timezone.utc).astimezone(IST).date().isoformat(),
+                "o": q["open"][i], "h": q["high"][i], "l": q["low"][i], "c": c,
+                "v": int(q["volume"][i] or 0),
+            })
+        as_of = datetime.fromtimestamp(meta["regularMarketTime"], tz=timezone.utc) if meta.get("regularMarketTime") else None
+        price = meta.get("regularMarketPrice")
+        # Yahoo's daily bars can lag its live price by a day (seen: last bar
+        # Sept 30 while the price was Oct 1's). If so, the last bar IS the
+        # previous close, and today's point is appended from meta so the
+        # chart reaches the current price.
+        as_of_day = as_of.astimezone(IST).date().isoformat() if as_of else None
+        if bars and price is not None and as_of_day and bars[-1]["t"] < as_of_day:
+            prev_close = bars[-1]["c"]
+            bars.append({
+                "t": as_of_day, "o": None, "h": meta.get("regularMarketDayHigh"),
+                "l": meta.get("regularMarketDayLow"), "c": price, "v": int(meta.get("regularMarketVolume") or 0),
+            })
+        else:
+            prev_close = bars[-2]["c"] if len(bars) >= 2 else None
+        return StockChart(
+            symbol=symbol,
+            name=meta.get("longName") or meta.get("shortName"),
+            exchange=meta.get("fullExchangeName"),
+            currency=meta.get("currency"),
+            price=price,
+            prev_close=prev_close,
+            day_high=meta.get("regularMarketDayHigh"),
+            day_low=meta.get("regularMarketDayLow"),
+            volume=meta.get("regularMarketVolume"),
+            week52_high=meta.get("fiftyTwoWeekHigh"),
+            week52_low=meta.get("fiftyTwoWeekLow"),
+            as_of=as_of,
+            staleness=staleness_tier(as_of),
+            bars=bars,
+        )
+    finally:
+        if owns_client:
+            client.close()
+
+
 def fetch_intraday_quote(symbol: str, client: Optional[httpx.Client] = None) -> Quote:
     """Latest quote off the 1d/5m chart. `as_of` is meta.regularMarketTime, not our clock."""
     owns_client = client is None

@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import text
 
-from app import bhavcopy, models
+from app import bhavcopy, instruments, models
 from app.db import get_engine
 
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -30,6 +30,10 @@ LOOKBACK_DAYS = 30
 
 def main() -> int:
     engine = get_engine()
+    try:
+        print("instruments:", instruments.refresh_instruments(engine))
+    except Exception as exc:  # noqa: BLE001 -- yesterday's list is still usable
+        print(f"instruments refresh FAILED (keeping the previous list) -- {exc}")
     today = datetime.now(IST).date()
     start = today - timedelta(days=LOOKBACK_DAYS)
     with engine.connect() as conn:

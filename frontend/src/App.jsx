@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState, useCallback, useRef } from 'react'
 import { getWatchlist, addSymbol, removeSymbol, getChanged, getQuietLog, ackSymbol } from './api'
 import { reply, QUICK_REPLIES } from './mascotChat'
+import { MarketView, ScansView, StockSheet, SymbolSearch } from './market'
 
 const POLL_MS = 15000
 
@@ -138,15 +139,15 @@ function moodFor(watchlist) {
   return up > watchlist.length / 2 ? 'happy' : 'neutral'
 }
 
-function WatchlistRow({ row, onRemove }) {
+function WatchlistRow({ row, onRemove, onOpen }) {
   const pct = formatPct(row.pct_change)
   const dir = row.pct_change == null ? 'flat' : row.pct_change >= 0 ? 'up' : 'down'
   return (
     <li className="watch-row">
-      <div className="watch-row-id">
+      <button className="watch-row-id row-open" onClick={() => onOpen(row.symbol)} title={`open ${row.symbol}`}>
         <span className="symbol">{row.symbol.replace(/\.NS$/, '')}</span>
         <StalenessBadge tier={row.staleness} />
-      </div>
+      </button>
       <div className="watch-row-quote">
         {row.price != null ? (
           <span className="price">₹{row.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -444,6 +445,12 @@ function QuietLogCard({ event }) {
   )
 }
 
+const VIEWS = [
+  { key: 'mine', label: '🐾 my stocks' },
+  { key: 'market', label: '📈 market' },
+  { key: 'scans', label: '✨ scans' },
+]
+
 const INBOX_TABS = [
   { key: 'changed', label: 'since last ✨' },
   { key: 'quiet', label: 'quiet log' },
@@ -454,7 +461,9 @@ export default function App() {
   const [changed, setChanged] = useState(null)
   const [quietLog, setQuietLog] = useState(null)
   const [inboxTab, setInboxTab] = useState('changed')
-  const [newSymbol, setNewSymbol] = useState('')
+  const [view, setView] = useState('mine')
+  const [openSymbol, setOpenSymbol] = useState(null)
+  const closeSheet = useCallback(() => setOpenSymbol(null), [])
   const [error, setError] = useState(null)
   const [now, setNow] = useState(() => new Date())
   const [loaded, setLoaded] = useState(false)
@@ -529,13 +538,10 @@ export default function App() {
     return () => clearInterval(id)
   }, [refreshAll])
 
-  const handleAdd = async (e) => {
-    e.preventDefault()
-    const symbol = newSymbol.trim().toUpperCase()
+  const handleAdd = async (symbol) => {
     if (!symbol) return
     try {
       await addSymbol(symbol)
-      setNewSymbol('')
       await refreshAll()
     } catch (err) {
       setError(err.message)
@@ -593,6 +599,14 @@ export default function App() {
 
       {error && <div className="error-banner">{error}</div>}
 
+      <nav className="lens-switcher view-switcher" aria-label="views">
+        {VIEWS.map((v) => (
+          <button key={v.key} className={view === v.key ? 'lens-btn active' : 'lens-btn'} onClick={() => setView(v.key)}>
+            {v.label}
+          </button>
+        ))}
+      </nav>
+
       {!loaded ? (
         <LoadingCard count={watchlist.length} />
       ) : (
@@ -603,22 +617,27 @@ export default function App() {
         </aside>
 
         <div className="col-main">
+        {view === 'market' && (
+          <>
+            <section className="pane">
+              <h2>🔍 find a stock</h2>
+              <SymbolSearch onPick={setOpenSymbol} placeholder="search any NSE company... 🔍" buttonLabel="open" />
+            </section>
+            <MarketView onOpen={setOpenSymbol} />
+          </>
+        )}
+        {view === 'scans' && <ScansView onOpen={setOpenSymbol} />}
+        {view === 'mine' && (
+        <>
         <section className="pane watchlist-pane">
           <h2>🐾 my watchlist</h2>
-          <form className="add-form" onSubmit={handleAdd}>
-            <input
-              value={newSymbol}
-              onChange={(e) => setNewSymbol(e.target.value)}
-              placeholder="add a stock... 🔍"
-            />
-            <button type="submit">+ add</button>
-          </form>
+          <SymbolSearch onPick={handleAdd} placeholder="add a stock by name or ticker... 🔍" />
           {watchlist.length === 0 ? (
             <p className="empty">no symbols yet -- add one above! 🎀</p>
           ) : (
             <ul className="watch-list">
               {watchlist.map((row) => (
-                <WatchlistRow key={row.symbol} row={row} onRemove={handleRemove} />
+                <WatchlistRow key={row.symbol} row={row} onRemove={handleRemove} onOpen={setOpenSymbol} />
               ))}
             </ul>
           )}
@@ -690,8 +709,18 @@ export default function App() {
             </>
           )}
         </section>
+        </>
+        )}
         </div>
       </main>
+      )}
+      {openSymbol && (
+        <StockSheet
+          symbol={openSymbol}
+          inWatchlist={watchlist.some((r) => r.symbol === openSymbol)}
+          onAdd={handleAdd}
+          onClose={closeSheet}
+        />
       )}
     </div>
   )

@@ -32,6 +32,14 @@ export const getChanged = () => request('/changed')
 
 export const getQuietLog = () => request('/quiet-log')
 
+export const getMarket = () => request('/market')
+
+export const getScan = (scan, limit = 25) => request(`/scans/${encodeURIComponent(scan)}?limit=${limit}`)
+
+export const searchSymbols = (q) => request(`/search?q=${encodeURIComponent(q)}`)
+
+export const getStock = (symbol) => request(`/stock/${encodeURIComponent(symbol)}`)
+
 export const ackSymbol = (symbol, seenUntil) =>
   request('/ack', {
     method: 'POST',
