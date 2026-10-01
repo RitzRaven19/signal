@@ -188,14 +188,92 @@ body {
   border: 4px solid var(--tint);
   box-shadow: 0 4px 12px rgba(233, 30, 140, 0.25);
   animation: sway 4.5s ease-in-out infinite;
+  position: relative;
 }
-.mascot-frame img {
+
+/* The art and its eyelids share this box, so they crop, breathe and
+   bounce together and the lids stay exactly over her eyes. */
+.mascot-art {
+  position: relative;
   width: 126%;
   height: 126%;
-  object-fit: cover;
   margin: -13% 0 0 -13%;
+}
+.mascot-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   display: block;
 }
+
+/* Blink: skin-toned lid with a lash curve, closed only for a moment. */
+@keyframes mascot-blink {
+  0%, 92%, 100% { transform: scaleY(0); }
+  95% { transform: scaleY(1); }
+}
+.mascot-lid {
+  position: absolute;
+  border-radius: 50% 50% 45% 45%;
+  background: var(--skin);
+  transform: scaleY(0);
+  transform-origin: 50% 0%;
+  animation: mascot-blink 4.6s ease-in-out infinite 1.2s;
+}
+.mascot-lid::after {
+  content: '';
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: 44%;
+  height: 30%;
+  border-bottom: 2px solid #3a1e2a;
+  border-radius: 0 0 50% 50%;
+}
+
+@keyframes mascot-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-1.5%) scale(1.02); }
+}
+@keyframes mascot-talk {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(-3%) scaleY(0.98); }
+}
+.mascot-frame.talking .mascot-art {
+  animation: mascot-talk 0.3s ease-in-out infinite;
+}
+
+@keyframes mascot-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(20deg); }
+}
+@keyframes mascot-float {
+  0% { opacity: 0; transform: translateY(0) scale(0.6); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-34px) scale(1); }
+}
+.mascot-sparkles i,
+.mascot-hearts i {
+  position: absolute;
+  font-style: normal;
+  pointer-events: none;
+  line-height: 1;
+}
+.mascot-sparkles i {
+  color: #fff;
+  text-shadow: 0 0 4px rgba(233, 30, 140, 0.6);
+  animation: mascot-twinkle 2.4s ease-in-out infinite;
+}
+.mascot-sparkles i:nth-child(1) { top: 10%; right: 14%; font-size: 13px; }
+.mascot-sparkles i:nth-child(2) { top: 26%; left: 10%; font-size: 9px; animation-delay: 0.8s; }
+.mascot-sparkles i:nth-child(3) { bottom: 18%; right: 10%; font-size: 10px; animation-delay: 1.6s; }
+.mascot-hearts i {
+  bottom: 18%;
+  color: var(--accent);
+  font-size: 11px;
+  animation: mascot-float 3s ease-out infinite;
+}
+.mascot-hearts i:nth-child(1) { left: 58%; }
+.mascot-hearts i:nth-child(2) { left: 40%; font-size: 8px; animation-delay: 1.5s; }
 
 .error-banner {
   background: #fff0f4;
@@ -569,8 +647,14 @@ body {
   from { opacity: 0; transform: scale(1.08); }
   to { opacity: 1; transform: scale(1); }
 }
-.mascot-frame img {
+/* The mood-change fade lives on the image, not the art box: the talking
+   bounce swaps the box's animation, and if the fade were on the box it
+   would replay (a flicker) every time a chat reply ended. */
+.mascot-art img {
   animation: mascot-swap 0.45s ease-out;
+}
+.mascot-art {
+  animation: mascot-breathe 3.6s ease-in-out infinite;
 }
 
 @keyframes blinkdot {
@@ -696,7 +780,11 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .mascot-frame,
-  .mascot-frame img,
+  .mascot-art,
+  .mascot-frame.talking .mascot-art,
+  .mascot-lid,
+  .mascot-sparkles i,
+  .mascot-hearts i,
   .pixel-bubble,
   .unread-dot,
   .chat-msg,

@@ -48,19 +48,59 @@ function formatPct(pct) {
   return `${sign}${(pct * 100).toFixed(1)}%`
 }
 
-const MASCOT_SRC = {
-  happy: '/mascot/mascot-happy.jpg',
-  neutral: '/mascot/mascot-neutral.jpg',
-  confused: '/mascot/mascot-confused.jpg',
-  cat: '/mascot/mascot-cat.jpg',
+// The mascot art, plus where each image's open eyes are (source pixels:
+// centre x, centre y, width, height) and the skin tone around them. The
+// art is never altered: blinking is skin-toned eyelids positioned over the
+// eyes that close for a split second. Happy's right eye is already a
+// wink, so only her open eye blinks.
+const MASCOT_ART = {
+  happy: { src: '/mascot/mascot-happy.jpg', w: 736, h: 736, skin: '#fde6df', eyes: [[298, 232, 70, 80]] },
+  neutral: { src: '/mascot/mascot-neutral.jpg', w: 736, h: 736, skin: '#fde3dc', eyes: [[315, 318, 72, 84], [440, 340, 72, 84]] },
+  confused: { src: '/mascot/mascot-confused.jpg', w: 736, h: 736, skin: '#fde4df', eyes: [[310, 340, 72, 86], [437, 318, 68, 84]] },
+  cat: { src: '/mascot/mascot-cat.jpg', w: 736, h: 1104, skin: '#fbdcd5', eyes: [[268, 632, 92, 100], [472, 648, 92, 100]] },
 }
 
-// `key={mood}` remounts the <img> when her mood changes, so the
-// mascot-swap fade replays instead of the photo snapping over.
-function Mascot({ mood, hopping = false }) {
+// Eyelid box as % of the displayed (square, object-fit: cover) image.
+// A taller-than-wide image is cropped equally top and bottom.
+function lidStyle(art, [cx, cy, w, h]) {
+  const side = Math.min(art.w, art.h)
+  const offX = (art.w - side) / 2
+  const offY = (art.h - side) / 2
+  return {
+    left: `${((cx - w / 2 - offX) / side) * 100}%`,
+    top: `${((cy - h / 2 - offY) / side) * 100}%`,
+    width: `${(w / side) * 100}%`,
+    height: `${(h / side) * 100}%`,
+    '--skin': art.skin,
+  }
+}
+
+// `key={mood}` remounts the art when her mood changes, so the
+// mascot-swap fade replays instead of the image snapping over.
+function Mascot({ mood, hopping = false, talking = false }) {
+  const art = MASCOT_ART[mood] || MASCOT_ART.neutral
+  const cls = ['mascot-frame', hopping && 'hopping', talking && 'talking'].filter(Boolean).join(' ')
   return (
-    <div className={hopping ? 'mascot-frame hopping' : 'mascot-frame'}>
-      <img key={mood} src={MASCOT_SRC[mood] || MASCOT_SRC.neutral} alt={`Signal mascot, ${mood}`} />
+    <div className={cls}>
+      <div className="mascot-art" key={mood}>
+        <img src={art.src} alt={`Signal mascot, ${mood}`} />
+        {art.eyes.map((eye, i) => (
+          <span key={i} className="mascot-lid" style={lidStyle(art, eye)} aria-hidden="true" />
+        ))}
+      </div>
+      {mood === 'happy' && (
+        <span className="mascot-sparkles" aria-hidden="true">
+          <i>✦</i>
+          <i>✦</i>
+          <i>✧</i>
+        </span>
+      )}
+      {mood === 'cat' && (
+        <span className="mascot-hearts" aria-hidden="true">
+          <i>♥</i>
+          <i>♥</i>
+        </span>
+      )}
     </div>
   )
 }
@@ -129,6 +169,14 @@ function WatchlistRow({ row, onRemove }) {
 function MoodCard({ watchlist, changed, mood }) {
   const [open, setOpen] = useState(false)
   const [hopping, setHopping] = useState(false)
+  const [talking, setTalking] = useState(false)
+  const talkTimer = useRef(null)
+  const speak = () => {
+    setTalking(true)
+    clearTimeout(talkTimer.current)
+    talkTimer.current = setTimeout(() => setTalking(false), 1400)
+  }
+  useEffect(() => () => clearTimeout(talkTimer.current), [])
   const tap = () => {
     setOpen((v) => !v)
     setHopping(true)
@@ -162,7 +210,7 @@ function MoodCard({ watchlist, changed, mood }) {
           onAnimationEnd={(e) => e.animationName === 'hop' && setHopping(false)}
           title="tap her for today's summary"
         >
-          <Mascot mood={mood} hopping={hopping} />
+          <Mascot mood={mood} hopping={hopping} talking={talking} />
         </button>
         <div className="mood-body">
           <span className="mood-label">{label}</span>
@@ -174,7 +222,7 @@ function MoodCard({ watchlist, changed, mood }) {
           )}
         </div>
       </div>
-      <MascotChat watchlist={watchlist} changed={changed} mood={mood} onReply={() => setHopping(true)} />
+      <MascotChat watchlist={watchlist} changed={changed} mood={mood} onReply={speak} />
     </section>
   )
 }
