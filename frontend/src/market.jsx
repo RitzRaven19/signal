@@ -3,7 +3,7 @@
 // and type; only layout pieces specific to them live in index.css.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getMarket, getScan, getStock, searchSymbols } from './api'
-import { BubbleText } from './bubble'
+import { GroovyText } from './groovy'
 
 const bare = (s) => (s || '').replace(/\.NS$/, '')
 export const fmtPct = (p) => (p == null ? '—' : `${p >= 0 ? '+' : ''}${(p * 100).toFixed(2)}%`)
@@ -184,7 +184,7 @@ function Sectors({ sectors }) {
   const sorted = [...sectors].filter((s) => s.pct_change != null).sort((a, b) => b.pct_change - a.pct_change)
   return (
     <section className="pane">
-      <h2 className="bubble-title"><BubbleText text={'🎨 sectors today'} /></h2>
+      <h2 className="groovy-title"><GroovyText text={'🎨 sectors today'} /></h2>
       <div className="sector-grid">
         {sorted.map((s) => {
           const strength = Math.min(Math.abs(s.pct_change) / 0.03, 1)
@@ -240,7 +240,7 @@ export function MarketView({ onOpen }) {
       <div className="mover-grid">
         {lists.map(([key, title]) => (
           <section className="pane" key={key}>
-            <h2 className="bubble-title"><BubbleText text={title} /></h2>
+            <h2 className="groovy-title"><GroovyText text={title} /></h2>
             <ul className="mkt-list">
               {data.movers[key].map((r) => (
                 <StockRow key={r.symbol} row={r} onOpen={onOpen} extra={key === 'most_active' ? fmtCr(r.traded_value) : null} />
@@ -301,7 +301,7 @@ export function ScansView({ onOpen }) {
 
   return (
     <section className="pane">
-      <h2 className="bubble-title"><BubbleText text={'✨ readymade scans'} /></h2>
+      <h2 className="groovy-title"><GroovyText text={'✨ readymade scans'} /></h2>
       <div className="lens-switcher scan-chips">
         {SCAN_ORDER.map((s) => (
           <button key={s} className={scan === s ? 'lens-btn active' : 'lens-btn'} onClick={() => setScan(s)}>
