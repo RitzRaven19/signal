@@ -477,7 +477,9 @@ export default function App() {
   const staleCount = watchlist.filter(isLagging).length
   const delayedCount = watchlist.filter((r) => r.staleness === 'delayed').length
   const allClosed = watchlist.length > 0 && watchlist.every((r) => r.staleness === 'closed')
-  const feedLabel = staleCount > 0
+  const feedLabel = watchlist.length === 0
+    ? 'nothing tracked yet'
+    : staleCount > 0
     ? `${staleCount} feed${staleCount > 1 ? 's' : ''} lagging`
     : delayedCount > 0
       ? `${delayedCount} feed${delayedCount > 1 ? 's' : ''} delayed`
@@ -665,7 +667,12 @@ export default function App() {
           {inboxTab === 'changed' ? (
             <>
               <p className="inbox-subtitle">what_changed(t0, now) -- not a log of everything that happened</p>
-              {!changed ? null : changed.statements.length > 0 ? (
+              {!changed ? null : watchlist.length === 0 ? (
+                <div className="notice-card">
+                  <p className="notice-headline">🎀 nothing to check yet</p>
+                  <p className="notice-body">add a stock to your watchlist and i'll tell you here when something about it really changes.</p>
+                </div>
+              ) : changed.statements.length > 0 ? (
                 <ul className="event-list">
                   {changed.statements.map((s) => (
                     <StatementCard key={`${s.symbol}-${s.field}`} statement={s} onAck={handleAck} />

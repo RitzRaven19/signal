@@ -9,6 +9,7 @@ yet, so staleness reflects Yahoo's own as_of, not a cache.
 from __future__ import annotations
 
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date as date_type, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal, Optional
@@ -394,29 +395,70 @@ def get_quiet_log(response: Response, signal_user_id: Optional[str] = Cookie(def
     }
 
 
-INDICES = [("^NSEI", "NIFTY 50"), ("^BSESN", "SENSEX"), ("^NSEBANK", "BANK NIFTY")]
+INDICES = [
+    ("^NSEI", "NIFTY 50"),
+    ("^BSESN", "SENSEX"),
+    ("^NSEBANK", "BANK NIFTY"),
+    ("NIFTY_MIDCAP_100.NS", "MIDCAP 100"),
+    ("^CNXSC", "SMALLCAP 100"),
+    ("^INDIAVIX", "INDIA VIX"),
+]
+SECTORS = [
+    ("^CNXIT", "IT"),
+    ("NIFTY_FIN_SERVICE.NS", "financial services"),
+    ("^CNXPSUBANK", "PSU banks"),
+    ("^CNXAUTO", "auto"),
+    ("^CNXPHARMA", "pharma"),
+    ("^CNXFMCG", "FMCG"),
+    ("^CNXMETAL", "metal"),
+    ("^CNXENERGY", "energy"),
+    ("^CNXREALTY", "realty"),
+    ("^CNXINFRA", "infra"),
+    ("^CNXMEDIA", "media"),
+    ("^CNXCONSUM", "consumption"),
+]
+INDEX_CACHE_SECONDS = 60
+_index_cache: dict = {"at": None, "data": None}
+
+
+def _index_quote(client: httpx.Client, symbol: str, label: str) -> dict:
+    try:
+        q = fetch_intraday_quote(symbol, client=client)
+    except SourceError:
+        return {"symbol": symbol, "name": label, "price": None, "error": "unavailable"}
+    return {
+        "symbol": symbol, "name": label, "price": q.price, "prev_close": q.prev_close,
+        "pct_change": (q.price - q.prev_close) / q.prev_close if q.prev_close else None,
+        "as_of": q.as_of, "staleness": q.staleness.value,
+    }
+
+
+def _index_quotes() -> tuple[list, list]:
+    """Headline indices and sector indices, fetched in parallel and cached
+    for a minute -- 18 Yahoo calls one after another took ~10s, and every
+    visitor re-fetching them would just get us rate-limited."""
+    now = datetime.now(timezone.utc)
+    if _index_cache["at"] and now - _index_cache["at"] < timedelta(seconds=INDEX_CACHE_SECONDS):
+        return _index_cache["data"]
+    wanted = INDICES + SECTORS
+    with httpx.Client(timeout=15) as client, ThreadPoolExecutor(max_workers=8) as pool:
+        quotes = list(pool.map(lambda pair: _index_quote(client, *pair), wanted))
+    data = (quotes[: len(INDICES)], quotes[len(INDICES):])
+    _index_cache.update(at=now, data=data)
+    return data
 
 
 @app.get("/api/market")
 def get_market():
-    """Market overview: the main indices (live from Yahoo) plus today's
-    movers across every listed NSE company (from the ingested bhavcopy)."""
+    """Market overview: indices and sectors (live from Yahoo), breadth and
+    today's movers across every listed NSE company (from the bhavcopy)."""
     engine = get_engine()
-    indices = []
-    with httpx.Client() as client:
-        for symbol, label in INDICES:
-            try:
-                q = fetch_intraday_quote(symbol, client=client)
-                indices.append({
-                    "symbol": symbol, "name": label, "price": q.price, "prev_close": q.prev_close,
-                    "pct_change": (q.price - q.prev_close) / q.prev_close if q.prev_close else None,
-                    "as_of": q.as_of, "staleness": q.staleness.value,
-                })
-            except SourceError:
-                indices.append({"symbol": symbol, "name": label, "price": None, "error": "unavailable"})
+    indices, sectors = _index_quotes()
     return {
         "as_of_date": market.latest_date(engine),
         "indices": indices,
+        "sectors": sectors,
+        "breadth": market.breadth(engine),
         "movers": {s: market.run_scan(engine, s, limit=5) for s in ("gainers", "losers", "most_active")},
         "scans": market.SCANS,
     }

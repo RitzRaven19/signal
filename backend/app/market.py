@@ -109,6 +109,22 @@ SCANS = {
 }
 
 
+_BREADTH_SQL = text(_TODAY_VS_PREV + """
+    select count(*) filter (where today.close > prev.close) as advances,
+           count(*) filter (where today.close < prev.close) as declines,
+           count(*) filter (where today.close = prev.close) as unchanged
+    from today join prev using (symbol)
+""")
+
+
+def breadth(engine: Engine) -> dict:
+    """Advances vs declines across every listed company (no liquidity
+    floor -- breadth is meant to count the whole market)."""
+    with engine.connect() as conn:
+        row = conn.execute(_BREADTH_SQL).mappings().one()
+    return dict(row)
+
+
 def latest_date(engine: Engine):
     with engine.connect() as conn:
         return conn.execute(text("select max(d) from daily_bars")).scalar()

@@ -1308,7 +1308,7 @@ body {
 }
 .index-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 12px;
 }
 .index-card {
@@ -1568,10 +1568,89 @@ body {
 }
 
 @media (max-width: 560px) {
-  .index-strip { grid-template-columns: 1fr; }
+  .index-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sheet-backdrop { padding: 12px 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .sheet { animation: none; }
+}
+
+.mood-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 12px;
+}
+.breadth-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.breadth-verdict {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--accent-dark);
+}
+.breadth-bar {
+  display: flex;
+  height: 14px;
+  margin: 10px 0 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 2px solid var(--border);
+}
+.breadth-up { background: var(--up); }
+.breadth-flat { background: var(--neutral-chip); }
+.breadth-down { background: var(--down); }
+.breadth-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.vix {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.vix-line {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.vix-line strong {
+  color: var(--accent-dark);
+}
+.sector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+.sector-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 11px;
+  border-radius: 16px;
+  color: #fff;
+}
+.sector-tile.up { background: rgba(233, 30, 140, var(--heat)); }
+.sector-tile.down { background: rgba(154, 107, 133, var(--heat)); }
+.sector-tile.flat { background: var(--neutral-chip); }
+.sector-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(110, 34, 68, 0.35);
+}
+.sector-pct {
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(110, 34, 68, 0.35);
+}
+@media (max-width: 560px) {
+  .mood-strip { grid-template-columns: 1fr; }
 }

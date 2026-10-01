@@ -133,6 +133,73 @@ function StockRow({ row, extra, onOpen }) {
 
 // ── Market overview (Groww "Explore") ─────────────────────────────────
 
+// How many companies rose vs fell -- the whole market's mood in one bar.
+function Breadth({ breadth }) {
+  if (!breadth) return null
+  const { advances, declines, unchanged } = breadth
+  const total = advances + declines + unchanged || 1
+  const upShare = advances / total
+  const verdict = upShare >= 0.6 ? 'most stocks rose 🌷' : upShare <= 0.4 ? 'most stocks fell 🥀' : 'a mixed day 🌗'
+  return (
+    <section className="pane breadth">
+      <div className="breadth-head">
+        <span className="index-name">market breadth</span>
+        <span className="breadth-verdict">{verdict}</span>
+      </div>
+      <div className="breadth-bar" role="img" aria-label={`${advances} up, ${declines} down, ${unchanged} unchanged`}>
+        <span className="breadth-up" style={{ width: `${(advances / total) * 100}%` }} />
+        <span className="breadth-flat" style={{ width: `${(unchanged / total) * 100}%` }} />
+        <span className="breadth-down" style={{ width: `${(declines / total) * 100}%` }} />
+      </div>
+      <div className="breadth-legend">
+        <span>▲ {advances.toLocaleString('en-IN')} up</span>
+        <span>{unchanged} flat</span>
+        <span>▼ {declines.toLocaleString('en-IN')} down</span>
+      </div>
+    </section>
+  )
+}
+
+// India VIX: expected volatility. It rising means traders are more nervous,
+// so it gets its own wording instead of the usual up-is-good pill.
+function VixCard({ vix }) {
+  const level = vix.price < 13 ? 'calm' : vix.price < 18 ? 'a little jittery' : vix.price < 25 ? 'nervous' : 'scared'
+  return (
+    <section className="pane vix" title="India VIX: how much movement traders expect over the next month">
+      <span className="index-name">fear gauge · india vix</span>
+      <span className="index-price">{vix.price.toFixed(2)}</span>
+      <span className="vix-line">
+        traders feel <strong>{level}</strong>
+        {vix.pct_change != null && <> · {vix.pct_change >= 0 ? 'up' : 'down'} {Math.abs(vix.pct_change * 100).toFixed(1)}% today</>}
+      </span>
+    </section>
+  )
+}
+
+// Sector heat tiles: deeper pink the more a sector rose, deeper mauve the
+// more it fell (saturating at 3%).
+function Sectors({ sectors }) {
+  if (!sectors?.length) return null
+  const sorted = [...sectors].filter((s) => s.pct_change != null).sort((a, b) => b.pct_change - a.pct_change)
+  return (
+    <section className="pane">
+      <h2>🎨 sectors today</h2>
+      <div className="sector-grid">
+        {sorted.map((s) => {
+          const strength = Math.min(Math.abs(s.pct_change) / 0.03, 1)
+          const style = { '--heat': (0.4 + strength * 0.6).toFixed(2) }
+          return (
+            <div key={s.symbol} className={`sector-tile ${dir(s.pct_change)}`} style={style}>
+              <span className="sector-name">{s.name}</span>
+              <span className="sector-pct">{fmtPct(s.pct_change)}</span>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
 export function MarketView({ onOpen }) {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
@@ -149,17 +216,25 @@ export function MarketView({ onOpen }) {
     ['losers', '🥀 top losers'],
     ['most_active', '🔥 most active'],
   ]
+  const vix = data.indices.find((i) => i.symbol === '^INDIAVIX')
   return (
     <div className="mkt">
       <div className="index-strip">
-        {data.indices.map((i) => (
-          <section className="pane index-card" key={i.symbol}>
-            <span className="index-name">{i.name}</span>
-            <span className="index-price">{i.price != null ? i.price.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '—'}</span>
-            <span className={`change ${dir(i.pct_change)}`}>{fmtPct(i.pct_change)}</span>
-          </section>
-        ))}
+        {data.indices
+          .filter((i) => i !== vix)
+          .map((i) => (
+            <section className="pane index-card" key={i.symbol}>
+              <span className="index-name">{i.name}</span>
+              <span className="index-price">{i.price != null ? i.price.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '—'}</span>
+              <span className={`change ${dir(i.pct_change)}`}>{fmtPct(i.pct_change)}</span>
+            </section>
+          ))}
       </div>
+      <div className="mood-strip">
+        <Breadth breadth={data.breadth} />
+        {vix?.price != null && <VixCard vix={vix} />}
+      </div>
+      <Sectors sectors={data.sectors} />
       <p className="inbox-subtitle">movers across every listed NSE company · closing data for {data.as_of_date}</p>
       <div className="mover-grid">
         {lists.map(([key, title]) => (
