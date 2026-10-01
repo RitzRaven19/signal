@@ -1,7 +1,11 @@
-// The mascot's chat brain. Free and offline: keyword intents answered in
-// her voice from the app's live data -- no API calls, no model. Every
-// number she says comes from the same watchlist/changed responses the
-// rest of the page renders, so she can't contradict the screen.
+// The mascot's chat brain. Free, no model: keyword intents answered in
+// her voice from the app's live data. Watchlist questions are answered
+// offline by `reply`; market and any-stock questions by `replyAsync`,
+// which reads our own API. Every number she says is one the page shows,
+// so she can't contradict the screen.
+
+import { getMarket, getStock, searchSymbols } from './api'
+import { periodReturn, rsi, rsiReading } from './market'
 
 const pct = (p) => (p == null ? null : `${p >= 0 ? '+' : ''}${(p * 100).toFixed(1)}%`)
 const bare = (s) => s.replace(/\.NS$/, '')
@@ -14,7 +18,7 @@ const STALENESS_EXPLAIN = {
   unknown: "unknown means i couldn't get a fresh price at all, so i won't pretend i have one.",
 }
 
-export const QUICK_REPLIES = ['what changed?', 'how are my stocks?', 'what do the badges mean?', 'what is the quiet log?']
+export const QUICK_REPLIES = ["how's the market?", 'best sector today?', 'what changed?', 'how are my stocks?', 'tell me about TCS', 'what do the badges mean?']
 
 function findSymbol(text, watchlist) {
   const t = text.toUpperCase()
@@ -107,8 +111,116 @@ export function reply(input, { watchlist, changed, mood }) {
   }
 
   if (has('help', 'what can you', 'who are you')) {
-    return "i'm signal's mascot! ask me what changed, how your stocks are doing, about any stock on your list by name, or what the badges, quiet log and \"seen it\" mean."
+    return "i'm signal's mascot! ask me how the market's doing, the best sector, top gainers or losers, the fear gauge, about any NSE stock by name, what changed, or what the badges, quiet log and \"seen it\" mean."
   }
 
-  return "hmm, i didn't catch that. i'm a simple bot! try one of the buttons below, or ask about a stock on your list by name."
+  return "hmm, i didn't catch that. i'm a simple bot! try one of the buttons below, or ask about any stock by name, like \"tell me about infosys\"."
+}
+
+// ── Market questions ─────────────────────────────────────────────────
+// These need data beyond the watchlist, so they read our own API --
+// still free, and still only numbers the market tab shows.
+
+const MARKET_WORDS = ['market', 'nifty', 'sensex', 'index', 'indices', 'sector', 'vix', 'fear', 'gainer', 'loser', 'breadth', 'movers', 'midcap', 'smallcap', 'top stocks']
+const LOOKUP = /(?:tell me about|what about|how is|how's|hows|price of|look up|lookup|about|check)\s+(.+)$/
+const FILLER = /\b(doing|today|now|stock|stocks|share|shares|price|please|pls|going|lately)\b/g
+const NOT_A_STOCK = new Set(['it', 'my stocks', 'my watchlist', 'the badges', 'badges', 'you', 'the quiet log', 'quiet log'])
+
+let marketCache = { at: 0, data: null }
+async function market() {
+  if (Date.now() - marketCache.at > 60000) marketCache = { at: Date.now(), data: await getMarket() }
+  return marketCache.data
+}
+
+const num = (n) => n.toLocaleString('en-IN', { maximumFractionDigits: 2 })
+const moverList = (rows) => rows.slice(0, 3).map((r) => `${bare(r.symbol)} ${pct(r.pct)}`).join(', ')
+
+async function marketReply(text) {
+  const m = await market()
+  const has = (...w) => w.some((x) => text.includes(x))
+  const sectors = (m.sectors || []).filter((s) => s.pct_change != null).sort((a, b) => b.pct_change - a.pct_change)
+  const vix = m.indices.find((i) => i.symbol === '^INDIAVIX')
+  const closed = m.indices.some((i) => i.staleness === 'closed') ? ' (as of the last close)' : ''
+
+  if (has('sector') && sectors.length) {
+    const up = sectors.filter((s) => s.pct_change > 0)
+    return `best sector: ${sectors[0].name} at ${pct(sectors[0].pct_change)}. worst: ${sectors.at(-1).name} at ${pct(sectors.at(-1).pct_change)}. ${
+      up.length ? `${up.length} of ${sectors.length} sectors are up` : 'every sector is down'
+    }${closed}.`
+  }
+  if (has('vix', 'fear') && vix?.price != null) {
+    const level = vix.price < 13 ? 'calm' : vix.price < 18 ? 'a little jittery' : vix.price < 25 ? 'nervous' : 'scared'
+    return `india vix is ${vix.price.toFixed(2)}, so traders feel ${level}. it's how much movement they expect over the next month: higher means more nervous.`
+  }
+  if (has('loser')) return `today's biggest falls: ${moverList(m.movers.losers)}. tap 📈 market to see more.`
+  if (has('gainer', 'movers', 'top stocks')) return `today's biggest rises: ${moverList(m.movers.gainers)}. tap 📈 market to see more.`
+
+  const idx = (name) => m.indices.find((i) => i.name === name)
+  const nifty = idx('NIFTY 50')
+  const sensex = idx('SENSEX')
+  const b = m.breadth
+  let line = nifty?.price != null ? `NIFTY 50 is at ${num(nifty.price)} (${pct(nifty.pct_change)})` : "i couldn't get NIFTY right now"
+  if (sensex?.price != null) line += ` and SENSEX at ${num(sensex.price)} (${pct(sensex.pct_change)})`
+  line += `${closed}.`
+  if (b) {
+    const share = b.advances / (b.advances + b.declines + b.unchanged || 1)
+    line += ` ${num(b.advances)} stocks rose and ${num(b.declines)} fell, so ${
+      share >= 0.6 ? 'most of the market was up' : share <= 0.4 ? 'most of the market was down' : "it's a mixed day"
+    }.`
+  }
+  if (sectors.length) line += ` best sector ${sectors[0].name} ${pct(sectors[0].pct_change)}, worst ${sectors.at(-1).name} ${pct(sectors.at(-1).pct_change)}.`
+  return line
+}
+
+async function stockReply(query, watchlist) {
+  const { results } = await searchSymbols(query)
+  const q = query.toUpperCase()
+  const hit =
+    results.find((r) => bare(r.symbol) === q) ||
+    results.find((r) => r.name.toUpperCase().includes(q) || bare(r.symbol).startsWith(q))
+  if (!hit) return null
+  const s = await getStock(hit.symbol)
+  const closes = s.bars.map((x) => x.c)
+  const parts = [`${s.name} (${bare(s.symbol)}) is at ₹${num(s.price)}, ${pct(s.pct_change)} ${s.staleness === 'closed' ? 'at the last close' : 'today'}.`]
+  const m1 = periodReturn(closes, 21)
+  const y1 = periodReturn(closes, 252)
+  if (m1 != null) parts.push(`it's ${pct(m1)} over a month${y1 != null ? ` and ${pct(y1)} over a year` : ''}.`)
+  if (s.week52_high) {
+    const fromHigh = s.price / s.week52_high - 1
+    parts.push(fromHigh > -0.02 ? 'it is right near its 52-week high.' : `it's ${Math.abs(fromHigh * 100).toFixed(0)}% below its 52-week high.`)
+  }
+  const r = rsi(closes)
+  if (r != null) parts.push(`RSI is ${r.toFixed(0)}, ${rsiReading(r).split(':')[0]}.`)
+  if (s.events?.length) parts.push(`${s.events.length} alert${s.events.length > 1 ? 's' : ''} in the last 45 days.`)
+  parts.push(watchlist.some((w) => w.symbol === s.symbol) ? "it's on your watchlist." : 'search it up top to see its full page or add it.')
+  return parts.join(' ')
+}
+
+// The chat's front door: market and any-stock questions are answered from
+// the API, everything else by the offline `reply`.
+export async function replyAsync(input, ctx) {
+  const text = input.trim().toLowerCase()
+  const has = (...w) => w.some((x) => text.includes(x))
+  if (!text || has('buy', 'sell', 'invest', 'should i', 'recommend', 'tip') || findSymbol(input, ctx.watchlist)) {
+    return reply(input, ctx)
+  }
+  try {
+    if (has(...MARKET_WORDS)) return await marketReply(text)
+
+    const looked = text.replace(/[?!.]+$/, '').match(LOOKUP)
+    let query = looked ? looked[1].replace(FILLER, '').replace(/\s+/g, ' ').trim() : null
+    const fallback = reply(input, ctx)
+    // A bare word or two ("tcs", "hdfc bank") the offline brain doesn't know.
+    if (!query && fallback.startsWith("hmm, i didn't catch that") && text.split(/\s+/).length <= 3) {
+      query = text.replace(/[?!.]+$/, '')
+    }
+    if (query && query.length >= 2 && !NOT_A_STOCK.has(query)) {
+      const answer = await stockReply(query, ctx.watchlist)
+      if (answer) return answer
+      if (looked) return `i couldn't find a stock called "${query}". try its NSE ticker, like TCS or INFY.`
+    }
+    return fallback
+  } catch {
+    return "i couldn't reach the market data just now. try again in a moment?"
+  }
 }

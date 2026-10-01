@@ -490,7 +490,7 @@ def get_stock(symbol: str):
     symbol = symbol.upper()
     engine = get_engine()
     try:
-        chart = fetch_stock_chart(symbol)
+        chart = fetch_stock_chart(symbol, range_="2y")  # 2y so the 200-day average spans the whole 1y chart
     except SourceError as exc:
         raise HTTPException(status_code=404, detail=f"no market data for {symbol}: {exc}")
     return {

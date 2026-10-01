@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState, useCallback, useRef } from 'react'
 import { getWatchlist, addSymbol, removeSymbol, getChanged, getQuietLog, ackSymbol } from './api'
-import { reply, QUICK_REPLIES } from './mascotChat'
+import { replyAsync, QUICK_REPLIES } from './mascotChat'
 import { MarketView, ScansView, StockSheet, SymbolSearch } from './market'
 
 const POLL_MS = 15000
@@ -268,6 +268,7 @@ function MascotChat({ watchlist, changed, mood, onReply }) {
   const [chatOpen, setChatOpen] = useState(false)
   const [messages, setMessages] = useState(loadChat)
   const [draft, setDraft] = useState('')
+  const [thinking, setThinking] = useState(false)
   const listRef = useRef(null)
 
   useEffect(() => {
@@ -280,14 +281,18 @@ function MascotChat({ watchlist, changed, mood, onReply }) {
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
-  }, [messages, chatOpen])
+  }, [messages, chatOpen, thinking])
 
-  const ask = (text) => {
-    if (!text.trim()) return
-    const answer = reply(text, { watchlist, changed, mood })
-    const at = new Date().toISOString()
-    setMessages((m) => [...m, { from: 'you', text, at }, { from: 'her', text: answer, at }].slice(-CHAT_MAX))
+  // Market and stock answers fetch data, so she shows a typing bubble
+  // until the reply is ready; watchlist answers come back instantly.
+  const ask = async (text) => {
+    if (!text.trim() || thinking) return
+    setMessages((m) => [...m, { from: 'you', text, at: new Date().toISOString() }].slice(-CHAT_MAX))
     setDraft('')
+    setThinking(true)
+    const answer = await replyAsync(text, { watchlist, changed, mood })
+    setThinking(false)
+    setMessages((m) => [...m, { from: 'her', text: answer, at: new Date().toISOString() }].slice(-CHAT_MAX))
     onReply()
   }
 
@@ -330,6 +335,13 @@ function MascotChat({ watchlist, changed, mood, onReply }) {
             </Fragment>
           )
         })}
+        {thinking && (
+          <li className="chat-msg from-her chat-typing" aria-label="typing">
+            <span />
+            <span />
+            <span />
+          </li>
+        )}
       </ul>
       <div className="chat-chips">
         {QUICK_REPLIES.map((q) => (

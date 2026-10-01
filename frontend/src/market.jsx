@@ -331,19 +331,68 @@ export function ScansView({ onOpen }) {
   )
 }
 
+// ── Indicators (computed in the browser from the daily bars) ──────────
+
+// Simple moving average; null until there are n closes to average.
+export function sma(closes, n) {
+  const out = new Array(closes.length).fill(null)
+  let sum = 0
+  closes.forEach((c, i) => {
+    sum += c
+    if (i >= n) sum -= closes[i - n]
+    if (i >= n - 1) out[i] = sum / n
+  })
+  return out
+}
+
+// Wilder's 14-day RSI, the standard one charting sites show.
+export function rsi(closes, n = 14) {
+  if (closes.length <= n) return null
+  let gain = 0
+  let loss = 0
+  for (let i = 1; i <= n; i++) {
+    const d = closes[i] - closes[i - 1]
+    if (d > 0) gain += d
+    else loss -= d
+  }
+  gain /= n
+  loss /= n
+  for (let i = n + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1]
+    gain = (gain * (n - 1) + Math.max(d, 0)) / n
+    loss = (loss * (n - 1) + Math.max(-d, 0)) / n
+  }
+  return loss === 0 ? 100 : 100 - 100 / (1 + gain / loss)
+}
+
 // ── Price chart (hand-drawn SVG, no charting library) ─────────────────
 
+// Point counts are period + 1, so the chart's change matches the returns table.
 const RANGES = [
   ['1m', 22],
-  ['3m', 66],
-  ['6m', 130],
-  ['1y', 400],
+  ['3m', 64],
+  ['6m', 127],
+  ['1y', 253],
+  ['2y', 600],
+]
+
+const AVERAGES = [
+  ['sma50', '50d avg', 50],
+  ['sma200', '200d avg', 200],
 ]
 
 function PriceChart({ bars }) {
   const [range, setRange] = useState('3m')
   const [hover, setHover] = useState(null)
-  const pts = useMemo(() => bars.slice(-RANGES.find((r) => r[0] === range)[1]), [bars, range])
+  const [shown, setShown] = useState({ sma50: false, sma200: false })
+  const closesAll = useMemo(() => bars.map((b) => b.c), [bars])
+  const averages = useMemo(
+    () => Object.fromEntries(AVERAGES.map(([key, , n]) => [key, sma(closesAll, n)])),
+    [closesAll],
+  )
+  const count = RANGES.find((r) => r[0] === range)[1]
+  const pts = useMemo(() => bars.slice(-count), [bars, count])
+  const lines = AVERAGES.filter(([key]) => shown[key]).map(([key, label]) => [key, label, averages[key].slice(-count)])
   if (pts.length < 2) return <p className="empty">not enough price history to draw a chart.</p>
 
   const W = 600
@@ -352,10 +401,19 @@ function PriceChart({ bars }) {
   const closes = pts.map((b) => b.c)
   const lo = Math.min(...closes)
   const hi = Math.max(...closes)
-  const span = hi - lo || 1
+  // The y-scale also fits any average line shown, so it can't run off the chart.
+  const avgVals = lines.flatMap(([, , vals]) => vals.filter((v) => v != null))
+  const yLo = Math.min(lo, ...avgVals)
+  const yHi = Math.max(hi, ...avgVals)
+  const span = yHi - yLo || 1
   const x = (i) => PAD.l + (i / (pts.length - 1)) * (W - PAD.l - PAD.r)
-  const y = (c) => PAD.t + (1 - (c - lo) / span) * (H - PAD.t - PAD.b)
+  const y = (c) => PAD.t + (1 - (c - yLo) / span) * (H - PAD.t - PAD.b)
   const line = pts.map((b, i) => `${x(i).toFixed(1)},${y(b.c).toFixed(1)}`).join(' ')
+  const avgPath = (vals) =>
+    vals
+      .map((v, i) => (v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`))
+      .filter(Boolean)
+      .join(' ')
   const up = closes[closes.length - 1] >= closes[0]
   const color = up ? 'var(--accent)' : 'var(--down)'
   const change = closes[closes.length - 1] / closes[0] - 1
@@ -377,6 +435,14 @@ function PriceChart({ bars }) {
           {h ? (
             <>
               <strong>{fmtPrice(h.c)}</strong> on {new Date(h.t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+              {lines.map(([key, label, vals]) =>
+                vals[hover] != null ? (
+                  <span key={key} className={`chart-key chart-key-${key}`}>
+                    {' '}
+                    · {label} {fmtPrice(vals[hover])}
+                  </span>
+                ) : null,
+              )}
             </>
           ) : (
             <>
@@ -408,6 +474,9 @@ function PriceChart({ bars }) {
         </defs>
         <polygon points={`${PAD.l},${H - PAD.b} ${line} ${W - PAD.r},${H - PAD.b}`} fill="url(#chart-fill)" />
         <polyline points={line} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+        {lines.map(([key, , vals]) => (
+          <polyline key={key} points={avgPath(vals)} className={`chart-avg chart-${key}`} fill="none" />
+        ))}
         <text x={Math.min(Math.max(x(hi_i), 40), W - 40)} y={y(hi) - 4} className="chart-label" textAnchor="middle">
           {fmtPrice(hi)}
         </text>
@@ -422,9 +491,113 @@ function PriceChart({ bars }) {
           </>
         )}
       </svg>
+      <div className="chart-toggles">
+        {AVERAGES.map(([key, label, n]) => (
+          <button
+            key={key}
+            className={`avg-toggle avg-${key}${shown[key] ? ' on' : ''}`}
+            onClick={() => setShown((v) => ({ ...v, [key]: !v[key] }))}
+            disabled={closesAll.length < n}
+            title={closesAll.length < n ? `needs ${n} days of history` : `average close of the last ${n} trading days`}
+          >
+            <i aria-hidden="true" /> {label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
+
+// Groww-style returns over standard periods, from the daily closes.
+const PERIODS = [
+  ['1 week', 5],
+  ['1 month', 21],
+  ['3 months', 63],
+  ['6 months', 126],
+  ['1 year', 252],
+]
+
+export function periodReturn(closes, n) {
+  if (closes.length <= n) return null
+  return closes[closes.length - 1] / closes[closes.length - 1 - n] - 1
+}
+
+function Returns({ bars }) {
+  const closes = bars.map((b) => b.c)
+  return (
+    <div className="returns">
+      {PERIODS.map(([label, n]) => {
+        const r = periodReturn(closes, n)
+        return (
+          <div key={label} className="return-cell">
+            <span className="return-label">{label}</span>
+            <span className={`change ${dir(r)}`}>{fmtPct(r)}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// Plain-words reading of RSI, shared with the mascot.
+export function rsiReading(r) {
+  if (r == null) return null
+  if (r >= 70) return 'overbought: it has risen fast and hard lately'
+  if (r <= 30) return 'oversold: it has fallen fast and hard lately'
+  if (r >= 55) return 'leaning strong'
+  if (r <= 45) return 'leaning weak'
+  return 'neutral'
+}
+
+// Trendlyne-style technicals, each with a plain-words reading. Describes,
+// never recommends -- same rule as the rest of the app.
+function Technicals({ bars }) {
+  const closes = bars.map((b) => b.c)
+  const last = closes[closes.length - 1]
+  const s50 = sma(closes, 50).at(-1)
+  const s200 = sma(closes, 200).at(-1)
+  const r = rsi(closes)
+  const rows = [
+    r != null && {
+      label: 'RSI (14 day)',
+      value: r.toFixed(0),
+      read: rsiReading(r),
+      loud: r >= 70 || r <= 30,
+    },
+    s50 != null && {
+      label: 'vs 50-day average',
+      value: fmtPct(last / s50 - 1),
+      read: last >= s50 ? 'above it: short-term trend is up' : 'below it: short-term trend is down',
+    },
+    s200 != null && {
+      label: 'vs 200-day average',
+      value: fmtPct(last / s200 - 1),
+      read: last >= s200 ? 'above it: long-term trend is up' : 'below it: long-term trend is down',
+    },
+    s50 != null &&
+      s200 != null && {
+        label: '50d vs 200d average',
+        value: s50 >= s200 ? 'golden ✨' : 'death 🥀',
+        read:
+          s50 >= s200
+            ? 'golden cross zone: the short-term average is above the long-term one'
+            : 'death cross zone: the short-term average is below the long-term one',
+      },
+  ].filter(Boolean)
+  if (!rows.length) return <p className="empty">not enough history for technicals yet.</p>
+  return (
+    <ul className="technicals">
+      {rows.map((t) => (
+        <li key={t.label} className={t.loud ? 'tech-row tech-loud' : 'tech-row'}>
+          <span className="tech-label">{t.label}</span>
+          <span className="tech-value">{t.value}</span>
+          <span className="tech-read">{t.read}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 
 // ── Stock page (Groww-style), shown as a sheet over the app ───────────
 
@@ -504,6 +677,9 @@ export function StockSheet({ symbol, inWatchlist, onAdd, onClose }) {
 
             <PriceChart bars={data.bars} />
 
+            <h3 className="sheet-sub">📅 returns</h3>
+            <Returns bars={data.bars} />
+
             <div className="stat-grid">
               <RangeBar low={data.day_low} high={data.day_high} value={data.price} label="today's range" />
               <RangeBar low={data.week52_low} high={data.week52_high} value={data.price} label="52-week range" />
@@ -535,6 +711,10 @@ export function StockSheet({ symbol, inWatchlist, onAdd, onClose }) {
                 <dd>{fmtPrice(data.week52_high)}</dd>
               </div>
             </dl>
+
+            <h3 className="sheet-sub">🔮 technicals</h3>
+            <Technicals bars={data.bars} />
+            <p className="tech-note">readings describe the chart, they aren't advice to buy or sell.</p>
 
             <h3 className="sheet-sub">🔔 recent alerts</h3>
             {data.events?.length ? (
