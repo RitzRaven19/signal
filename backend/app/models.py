@@ -54,6 +54,43 @@ def insert_event(engine: Engine, event: Event) -> Optional[int]:
         return row[0] if row else None
 
 
+INSERT_EVENTS_BATCH_SQL = text(
+    """
+    insert into events (symbol, type, score, reason, evidence, occurred_at, fingerprint)
+    select symbol, type, score, reason, evidence, occurred_at, fingerprint
+    from jsonb_to_recordset(CAST(:rows AS jsonb)) as r(
+        symbol text, type text, score double precision, reason text,
+        evidence jsonb, occurred_at timestamptz, fingerprint text
+    )
+    on conflict (fingerprint) do nothing
+    returning id
+    """
+)
+
+
+def insert_events(engine: Engine, events: list[Event]) -> int:
+    """Insert many events in one round trip, deduped on fingerprint the
+    same way insert_event is. Returns how many were actually new.
+    (insert_event's one-transaction-per-event took minutes for a day's
+    scan across ~2,600 symbols.)"""
+    if not events:
+        return 0
+    rows = [
+        {
+            "symbol": e.symbol,
+            "type": e.type,
+            "score": e.score,
+            "reason": e.reason,
+            "evidence": e.evidence,
+            "occurred_at": e.occurred_at.isoformat(),
+            "fingerprint": e.fingerprint,
+        }
+        for e in events
+    ]
+    with engine.begin() as conn:
+        return len(conn.execute(INSERT_EVENTS_BATCH_SQL, {"rows": json.dumps(rows)}).all())
+
+
 INSERT_DAILY_BAR_SQL = text(
     """
     insert into daily_bars (symbol, d, close, volume, deliv_pct, total_trades)

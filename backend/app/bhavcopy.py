@@ -102,12 +102,24 @@ _VOL_MEDIAN_20D_SQL = text(
     """
 )
 
-_MEDIAN_AVG_TRADE_SIZE_SQL = text(
+# Per-symbol, trailing 20 days -- NOT the day's cross-sectional median.
+# Against the whole market's median, stocks that structurally trade in
+# large lots (cheap, high-share-count names) cleared the bar every day:
+# ~280 of ~2650 symbols fired BLOCK_TRADE on a single day. Against its
+# own history, a stock only fires when its lot size is unusual for it.
+_MEDIAN_AVG_TRADE_SIZE_20D_SQL = text(
     """
-    select percentile_cont(0.5) within group (order by volume::float / nullif(total_trades, 0))
-        as median_avg_trade_size
-    from daily_bars
-    where d = :date and total_trades > 0
+    select symbol,
+           percentile_cont(0.5) within group (order by volume::float / total_trades)
+               as median_avg_trade_size
+    from (
+        select symbol, volume, total_trades,
+               row_number() over (partition by symbol order by d desc) as rn
+        from daily_bars
+        where d < :date and total_trades > 0
+    ) recent
+    where rn <= 20
+    group by symbol
     """
 )
 
@@ -118,8 +130,8 @@ _TODAY_BARS_SQL = text(
 
 def scan_for_events(engine: Engine, date: datetime) -> int:
     """Runs DELIVERY_CONVICTION and BLOCK_TRADE across every symbol in
-    that date's daily_bars, against the trailing 20-day median volume
-    (per symbol) and that day's cross-sectional median trade size.
+    that date's daily_bars, each against that symbol's own trailing
+    20-day median (volume, and average trade size respectively).
     Returns how many new events were inserted (fingerprint-deduped, so
     re-running the same date is a no-op)."""
     occurred_at = datetime(date.year, date.month, date.day, 10, 0, tzinfo=timezone.utc)  # ~15:30 IST close
@@ -129,24 +141,27 @@ def scan_for_events(engine: Engine, date: datetime) -> int:
             row.symbol: row.vol_median_20d
             for row in conn.execute(_VOL_MEDIAN_20D_SQL, {"date": date.date()})
         }
-        median_trade_size = conn.execute(_MEDIAN_AVG_TRADE_SIZE_SQL, {"date": date.date()}).scalar()
+        trade_size_medians = {
+            row.symbol: row.median_avg_trade_size
+            for row in conn.execute(_MEDIAN_AVG_TRADE_SIZE_20D_SQL, {"date": date.date()})
+        }
         today_rows = conn.execute(_TODAY_BARS_SQL, {"date": date.date()}).mappings().all()
 
-    inserted = 0
+    events = []
     for row in today_rows:
         vol_median_20d = vol_medians.get(row["symbol"])
         if vol_median_20d:
-            event = detector.detect_delivery_conviction(
-                row["symbol"], row["volume"], row["deliv_pct"], vol_median_20d, occurred_at
+            events.append(
+                detector.detect_delivery_conviction(
+                    row["symbol"], row["volume"], row["deliv_pct"], vol_median_20d, occurred_at
+                )
             )
-            if event and models.insert_event(engine, event) is not None:
-                inserted += 1
-
-        if median_trade_size:
-            event = detector.detect_block_trade(
-                row["symbol"], row["volume"], row["total_trades"], median_trade_size, occurred_at
+        trade_size_median = trade_size_medians.get(row["symbol"])
+        if trade_size_median:
+            events.append(
+                detector.detect_block_trade(
+                    row["symbol"], row["volume"], row["total_trades"], trade_size_median, occurred_at
+                )
             )
-            if event and models.insert_event(engine, event) is not None:
-                inserted += 1
 
-    return inserted
+    return models.insert_events(engine, [e for e in events if e is not None])
