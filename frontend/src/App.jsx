@@ -304,7 +304,7 @@ function MascotChat({ watchlist, changed, mood, onReply }) {
   if (!chatOpen) {
     return (
       <button className="chat-toggle" onClick={() => setChatOpen(true)}>
-        💬 talk to me
+        <GroovyText text="💬 talk to me" />
       </button>
     )
   }

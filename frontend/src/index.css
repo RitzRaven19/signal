@@ -1999,3 +1999,139 @@ body {
 .mini-loader-track .loading-runner {
   top: -10px;
 }
+
+/* ── Loaders on the home page's gingham ─────────────────────────────── */
+
+.loading-screen {
+  background-color: var(--bg);
+  background-image:
+    repeating-linear-gradient(90deg, rgba(255, 141, 173, 0.42) 0 22px, rgba(0, 0, 0, 0) 22px 44px),
+    repeating-linear-gradient(0deg, rgba(255, 141, 173, 0.42) 0 22px, rgba(0, 0, 0, 0) 22px 44px);
+}
+.loading-screen .loading-title {
+  color: var(--groovy-fill);
+}
+/* white edges vanish on gingham, so the bar takes the red outline */
+.loading-track {
+  border-color: var(--groovy-red);
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: 3px 3px 0 var(--groovy-deep);
+}
+.loading-fill {
+  background: var(--groovy-fill);
+}
+.loading-caption {
+  font-family: 'Shrikhand', 'Lobster', 'Pacifico', cursive;
+  font-weight: 400;
+  font-synthesis: none;
+  font-size: clamp(16px, 1.8vw, 20px);
+  word-spacing: 0.1em;
+  color: var(--groovy-red);
+  text-shadow: 1px 1px 0 var(--groovy-fill);
+}
+
+/* the mini loader sits in the page like any other card */
+.mini-loader {
+  background: var(--panel);
+  border: 2px solid var(--border);
+}
+.mini-loader-title {
+  color: var(--groovy-fill);
+}
+
+/* ── Chat, in the groovy style ──────────────────────────────────────── */
+
+.chat-toggle {
+  font-family: 'Shrikhand', 'Lobster', 'Pacifico', cursive;
+  font-weight: 400;
+  font-synthesis: none;
+  font-size: 18px;
+  word-spacing: 0.1em;
+  color: var(--groovy-fill);
+  -webkit-text-stroke: 1.2px var(--groovy-red);
+  paint-order: stroke fill;
+  text-shadow:
+    1px 1px 0 var(--groovy-red),
+    2px 2px 0 var(--groovy-deep);
+  border-color: var(--groovy-fill);
+}
+.chat-toggle:hover {
+  border-color: var(--groovy-red);
+}
+
+.chat {
+  border-top-color: var(--groovy-fill);
+}
+.chat-head > span {
+  font-family: 'Shrikhand', 'Lobster', 'Pacifico', cursive;
+  font-weight: 400;
+  font-synthesis: none;
+  font-size: 17px;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  word-spacing: 0.1em;
+  color: var(--groovy-fill);
+  -webkit-text-stroke: 1.2px var(--groovy-red);
+  paint-order: stroke fill;
+  text-shadow:
+    1px 1px 0 var(--groovy-red),
+    2px 2px 0 var(--groovy-deep);
+}
+.chat-clear {
+  color: var(--groovy-red);
+}
+.chat-close {
+  background: var(--groovy-fill);
+  color: #fff;
+  box-shadow: 1.5px 1.5px 0 var(--groovy-red);
+}
+
+.chat-day {
+  font-family: 'Shrikhand', 'Lobster', 'Pacifico', cursive;
+  font-weight: 400;
+  font-synthesis: none;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  color: var(--groovy-red);
+  background: #fff;
+  border-color: var(--groovy-fill);
+}
+
+/* retro bubbles: red outline + a solid red drop, like the lettering */
+.chat-msg.from-her {
+  background: #fff5f9;
+  color: var(--text);
+  border: 2px solid var(--groovy-red);
+  border-radius: 16px 16px 16px 4px;
+  box-shadow: 3px 3px 0 var(--groovy-red);
+}
+.chat-msg.from-you {
+  background: var(--groovy-fill);
+  color: #7a1030;
+  border: 2px solid var(--groovy-red);
+  border-radius: 16px 16px 4px 16px;
+  box-shadow: 3px 3px 0 var(--groovy-deep);
+}
+.chat-typing span {
+  background: var(--groovy-red);
+}
+
+.chat-chip {
+  border-color: var(--groovy-fill);
+  color: var(--groovy-red);
+}
+.chat-chip:hover {
+  border-color: var(--groovy-red);
+  background: #fff;
+}
+.chat-form input {
+  border-color: var(--groovy-fill);
+}
+.chat-form input:focus {
+  border-color: var(--groovy-red);
+}
+.chat-form button {
+  background: var(--groovy-red);
+  box-shadow: 0 3px 0 var(--groovy-deep);
+}
