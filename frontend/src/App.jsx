@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { Fragment, useEffect, useState, useCallback, useRef } from 'react'
 import { getWatchlist, addSymbol, removeSymbol, getChanged, getQuietLog, ackSymbol } from './api'
 import { reply, QUICK_REPLIES } from './mascotChat'
 
@@ -181,13 +181,53 @@ function MoodCard({ watchlist, changed, mood }) {
 
 // Talk to her. Runs entirely in the browser (see mascotChat.js) -- free,
 // no API, and every answer is read off the same live data as the page.
+// Chat history lives in this browser's localStorage -- the same scope as
+// the signal_user_id cookie that identifies the watchlist. Each message is
+// timestamped: her answers describe the data at the moment she gave them,
+// so old ones are shown under their day rather than passing as current.
+const CHAT_KEY = 'signal-chat-v1'
+const CHAT_MAX = 200
+const greeting = () => ({
+  from: 'her',
+  text: 'hiii! ask me what changed, how your stocks are doing, or about any stock by name.',
+  at: new Date().toISOString(),
+})
+
+function loadChat() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CHAT_KEY))
+    if (Array.isArray(saved) && saved.length) return saved
+  } catch {
+    // storage blocked or corrupt -- start fresh
+  }
+  return [greeting()]
+}
+
+const dayLabel = (iso) => {
+  const d = new Date(iso)
+  const today = new Date()
+  const yesterday = new Date(today.getTime() - 86400000)
+  const same = (a, b) => a.toDateString() === b.toDateString()
+  if (same(d, today)) return 'today'
+  if (same(d, yesterday)) return 'yesterday'
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+}
+const timeLabel = (iso) =>
+  new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })
+
 function MascotChat({ watchlist, changed, mood, onReply }) {
   const [chatOpen, setChatOpen] = useState(false)
-  const [messages, setMessages] = useState([
-    { from: 'her', text: "hiii! ask me what changed, how your stocks are doing, or about any stock by name." },
-  ])
+  const [messages, setMessages] = useState(loadChat)
   const [draft, setDraft] = useState('')
   const listRef = useRef(null)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHAT_KEY, JSON.stringify(messages.slice(-CHAT_MAX)))
+    } catch {
+      // storage full or blocked -- the chat still works, it just won't persist
+    }
+  }, [messages])
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
@@ -196,10 +236,13 @@ function MascotChat({ watchlist, changed, mood, onReply }) {
   const ask = (text) => {
     if (!text.trim()) return
     const answer = reply(text, { watchlist, changed, mood })
-    setMessages((m) => [...m, { from: 'you', text }, { from: 'her', text: answer }])
+    const at = new Date().toISOString()
+    setMessages((m) => [...m, { from: 'you', text, at }, { from: 'her', text: answer, at }].slice(-CHAT_MAX))
     setDraft('')
     onReply()
   }
+
+  const clearChat = () => setMessages([greeting()])
 
   if (!chatOpen) {
     return (
@@ -213,16 +256,31 @@ function MascotChat({ watchlist, changed, mood, onReply }) {
     <div className="chat">
       <div className="chat-head">
         <span>chatting with signal</span>
-        <button className="chat-close" onClick={() => setChatOpen(false)} aria-label="close chat">
-          ×
-        </button>
+        <div className="chat-head-actions">
+          {messages.length > 1 && (
+            <button className="chat-clear" onClick={clearChat}>
+              clear
+            </button>
+          )}
+          <button className="chat-close" onClick={() => setChatOpen(false)} aria-label="close chat">
+            ×
+          </button>
+        </div>
       </div>
       <ul className="chat-log" ref={listRef} aria-live="polite">
-        {messages.map((m, i) => (
-          <li key={i} className={`chat-msg from-${m.from}`}>
-            {m.text}
-          </li>
-        ))}
+        {messages.map((m, i) => {
+          const day = m.at ? dayLabel(m.at) : null
+          const newDay = day && (i === 0 || dayLabel(messages[i - 1].at ?? m.at) !== day)
+          return (
+            <Fragment key={i}>
+              {newDay && <li className="chat-day">{day}</li>}
+              <li className={`chat-msg from-${m.from}`}>
+                {m.text}
+                {m.at && <time className="chat-time">{timeLabel(m.at)}</time>}
+              </li>
+            </Fragment>
+          )
+        })}
       </ul>
       <div className="chat-chips">
         {QUICK_REPLIES.map((q) => (
