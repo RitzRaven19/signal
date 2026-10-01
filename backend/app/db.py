@@ -16,7 +16,10 @@ from sqlalchemy.engine import Engine
 
 load_dotenv()
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# .strip(): a URL pasted into a secrets UI easily picks up a trailing
+# newline, which ends up in the database name ('database "postgres\n"
+# does not exist' -- the first GitHub Actions run failed exactly so).
+DATABASE_URL = (os.environ.get("DATABASE_URL") or "").strip() or None
 
 _engine: Optional[Engine] = None
 
