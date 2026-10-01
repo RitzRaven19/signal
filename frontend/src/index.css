@@ -679,48 +679,41 @@ body {
   to { width: 96%; }
 }
 
-.loading-card {
-  position: relative;
-  max-width: 460px;
-  margin: 40px auto;
+/* Fills the whole window on its own; the page renders only once it's gone. */
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 6vw;
   background: #f79eb6;
-  border-radius: 26px;
-  padding: 30px 22px;
-  box-shadow: 0 10px 26px rgba(233, 30, 140, 0.22);
-}
-/* scalloped top and bottom edges */
-.loading-card::before,
-.loading-card::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 18px;
-  background-size: 22px 22px;
-  background-repeat: repeat-x;
-}
-.loading-card::before {
-  top: -9px;
-  background-image: radial-gradient(circle at 11px 11px, #f79eb6 10px, transparent 11px);
-}
-.loading-card::after {
-  bottom: -9px;
-  background-image: radial-gradient(circle at 11px 7px, #f79eb6 10px, transparent 11px);
 }
 
 .loading-title {
-  text-align: center;
-  font-size: 26px;
-  font-weight: 800;
+  font-family: 'Shrikhand', 'Lobster', 'Pacifico', cursive;
+  font-weight: 400;
+  font-synthesis: none;
+  font-size: clamp(44px, 8vw, 96px);
+  line-height: 1.15;
   color: #fff;
-  margin-bottom: 14px;
+  -webkit-text-stroke: 2px #d7263d;
+  paint-order: stroke fill;
+  text-shadow:
+    2px 2px 0 #d7263d,
+    4px 4px 0 #d7263d,
+    6px 6px 0 #c81e34;
+  margin-bottom: clamp(24px, 5vh, 48px);
 }
 
 .loading-track {
   position: relative;
-  height: 34px;
+  width: 100%;
+  height: 40px;
   border: 3px solid #fff;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .loading-fill {
@@ -771,9 +764,9 @@ body {
 }
 
 .loading-caption {
-  margin-top: 16px;
+  margin-top: 24px;
   text-align: center;
-  font-size: 13.5px;
+  font-size: 17px;
   font-weight: 600;
   color: #fff;
 }

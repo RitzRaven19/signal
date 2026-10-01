@@ -108,11 +108,12 @@ function Mascot({ mood, hopping = false, talking = false }) {
   )
 }
 
-// The mockup's loading screen: the bunny runs the bar while the first
-// watchlist fetch is in flight.
+// The loading screen: it fills the window on its own while the first
+// fetch is in flight, and the bunny runs the bar edge to edge. Nothing
+// else renders until it's done.
 function LoadingCard({ count }) {
   return (
-    <div className="loading-card" role="status" aria-live="polite">
+    <div className="loading-screen" role="status" aria-live="polite">
       <div className="loading-title">loading</div>
       <div className="loading-track">
         <div className="loading-fill" />
@@ -588,6 +589,9 @@ export default function App() {
     }
   }
 
+  // Until the first fetch lands, the loading screen is the whole page.
+  if (!loaded) return <LoadingCard count={watchlist.length} />
+
   return (
     <div className="app">
       <header className="app-header">
@@ -628,9 +632,6 @@ export default function App() {
         ))}
       </nav>
 
-      {!loaded ? (
-        <LoadingCard count={watchlist.length} />
-      ) : (
       <main className="layout">
         <aside className="col-side">
           <MoodCard watchlist={watchlist} changed={changed} mood={mood} />
@@ -740,7 +741,6 @@ export default function App() {
         )}
         </div>
       </main>
-      )}
       {openSymbol && (
         <StockSheet
           symbol={openSymbol}
