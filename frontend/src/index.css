@@ -1826,3 +1826,124 @@ body {
   font-weight: 600;
   color: var(--muted);
 }
+
+/* ── Bubble heart headings (tagline + section titles) ───────────────── */
+
+/* To use the real "Bubble Heart" font, add frontend/public/fonts/BubbleHeart.woff2
+   and uncomment this; it's first in the stack below. Left commented while the
+   file doesn't exist, so browsers don't 404 on it.
+@font-face {
+  font-family: 'Bubble Heart';
+  font-display: swap;
+  src: url('/fonts/BubbleHeart.woff2') format('woff2'), url('/fonts/BubbleHeart.otf') format('opentype');
+}
+*/
+@font-face {
+  font-family: 'Modak';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/modak-latin-400.woff2') format('woff2');
+}
+
+:root {
+  --bubble-font: 'Bubble Heart', 'Modak', 'Sniglet', 'Fredoka', cursive;
+  --bubble-outline: #b0124f;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.bubble-title,
+.bubble-tagline {
+  font-family: var(--bubble-font);
+  /* 800 so the Sniglet/Fredoka fallbacks come out bold; synthesis off so
+     Modak (a single 400 weight) isn't faux-bolded. */
+  font-weight: 800;
+  font-synthesis: none;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+
+.pane h2.bubble-title {
+  font-size: clamp(24px, 2.8vw, 34px);
+  min-height: 1.1em; /* reserve the line so the font swap doesn't jump */
+  /* the highlighter bar, shortened to sit under Modak's taller letters */
+  background: linear-gradient(0deg, var(--border) 0 34%, rgba(0, 0, 0, 0) 34%);
+  padding: 0 6px;
+}
+
+.tagline.bubble-tagline {
+  font-size: clamp(20px, 2.4vw, 28px);
+  min-height: 1.1em;
+  margin: 6px 0 8px;
+}
+
+.bl {
+  position: relative;
+  display: inline-block;
+  color: var(--c);
+  /* stroke is painted under the fill, so 3px shows as a 1.5px outline */
+  -webkit-text-stroke: 3px var(--bubble-outline);
+  paint-order: stroke fill;
+  text-shadow: 0 2px 0 rgba(160, 30, 80, 0.25);
+}
+
+/* gloss highlight near the top-left of each letter */
+.bl:not(.bl-punct)::before {
+  content: '';
+  position: absolute;
+  top: 0.3em;
+  left: 0.12em;
+  width: 0.18em;
+  height: 0.1em;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.85;
+  transform: rotate(-25deg);
+  pointer-events: none;
+}
+
+/* tiny heart tucked into the top-right of every third letter */
+.bl-heart::after {
+  content: '';
+  position: absolute;
+  top: 0.18em;
+  right: -0.12em;
+  width: 0.32em;
+  height: 0.32em;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.6 4.5c2.1 0 3.6 1.2 5.4 3.2 1.8-2 3.3-3.2 5.4-3.2 3.6 0 5.7 3.9 4.2 7.3C19.5 16.4 12 21 12 21z' fill='white' stroke='%23D93A6B' stroke-width='2.6' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  transform: rotate(var(--r));
+  pointer-events: none;
+  z-index: 2; /* above the next letter, which would otherwise paint over it */
+}
+
+@keyframes bl-bounce {
+  0%,
+  100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+.bubble-title:hover .bl,
+.bubble-tagline:hover .bl {
+  animation: bl-bounce 0.32s ease-out;
+  animation-delay: calc(var(--i) * 30ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .bubble-title:hover .bl,
+  .bubble-tagline:hover .bl { animation: none; }
+}
+/* At 375px the tagline is 2 lines; narrower phones push it to 3, so the
+   hearts go there and only color + gloss stay. */
+@media (max-width: 360px) {
+  .bubble-tagline .bl-heart::after { display: none; }
+}

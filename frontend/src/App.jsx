@@ -3,6 +3,7 @@ import { getWatchlist, addSymbol, removeSymbol, getChanged, getQuietLog, ackSymb
 import { replyAsync, QUICK_REPLIES } from './mascotChat'
 import { MarketView, ScansView, StockSheet, SymbolSearch } from './market'
 import { FundSheet, FundsView } from './funds'
+import { BubbleText } from './bubble'
 
 const POLL_MS = 15000
 
@@ -377,7 +378,7 @@ function AtAGlance({ watchlist, changed }) {
   ]
   return (
     <section className="pane glance">
-      <h2>at a glance</h2>
+      <h2 className="bubble-title"><BubbleText text={'at a glance'} /></h2>
       <ul className="glance-list">
         {rows.map(([k, v, tone]) => (
           <li key={k}>
@@ -613,7 +614,9 @@ export default function App() {
           </div>
         </div>
       </header>
-      <p className="tagline">what changed for your girlies (the stocks) today ✨</p>
+      <p className="tagline bubble-tagline">
+        <BubbleText text="what changed for your girlies (the stocks) today ✨" />
+      </p>
 
       {error && <div className="error-banner">{error}</div>}
 
@@ -638,7 +641,7 @@ export default function App() {
         {view === 'market' && (
           <>
             <section className="pane">
-              <h2>🔍 find a stock</h2>
+              <h2 className="bubble-title"><BubbleText text={'🔍 find a stock'} /></h2>
               <SymbolSearch onPick={setOpenSymbol} placeholder="search any NSE company... 🔍" buttonLabel="open" />
             </section>
             <MarketView onOpen={setOpenSymbol} />
@@ -649,7 +652,7 @@ export default function App() {
         {view === 'mine' && (
         <>
         <section className="pane watchlist-pane">
-          <h2>🐾 my watchlist</h2>
+          <h2 className="bubble-title"><BubbleText text={'🐾 my watchlist'} /></h2>
           <SymbolSearch onPick={handleAdd} placeholder="add a stock by name or ticker... 🔍" />
           {watchlist.length === 0 ? (
             <p className="empty">no symbols yet -- add one above! 🎀</p>
@@ -664,7 +667,7 @@ export default function App() {
 
         <section className="pane inbox-pane">
           <div className="inbox-header">
-            <h2>💌 since you last peeked</h2>
+            <h2 className="bubble-title"><BubbleText text={'💌 since you last peeked'} /></h2>
             <div className="lens-switcher">
               {INBOX_TABS.map((t) => (
                 <button

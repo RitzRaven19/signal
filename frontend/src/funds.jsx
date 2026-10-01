@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 import { getFund, searchFunds } from './api'
 import { FUND_RANGES, PriceChart, fmtPct } from './market'
+import { BubbleText } from './bubble'
 
 const dir = (p) => (p == null ? 'flat' : p >= 0 ? 'up' : 'down')
 const fmtNav = (n) => (n == null ? '—' : `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`)
@@ -50,7 +51,7 @@ export function FundsView({ onOpen }) {
 
   return (
     <section className="pane">
-      <h2>💰 mutual funds</h2>
+      <h2 className="bubble-title"><BubbleText text={'💰 mutual funds'} /></h2>
       <form
         className="add-form"
         onSubmit={(e) => {
