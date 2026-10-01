@@ -170,7 +170,7 @@ function WatchlistRow({ row, onRemove, onOpen }) {
 
 // The mockup's "feeling good" card, driven by the real watchlist. Clicking
 // her toggles the pixel speech bubble with the day's one-line summary.
-function MoodCard({ watchlist, changed, mood }) {
+function MoodCard({ watchlist, changed, mood, actions }) {
   const [open, setOpen] = useState(false)
   const [hopping, setHopping] = useState(false)
   const [talking, setTalking] = useState(false)
@@ -226,13 +226,15 @@ function MoodCard({ watchlist, changed, mood }) {
           )}
         </div>
       </div>
-      <MascotChat watchlist={watchlist} changed={changed} mood={mood} onReply={speak} />
+      <MascotChat watchlist={watchlist} changed={changed} mood={mood} onReply={speak} actions={actions} />
     </section>
   )
 }
 
-// Talk to her. Runs entirely in the browser (see mascotChat.js) -- free,
-// no API, and every answer is read off the same live data as the page.
+// Talk to her (brain in mascotChat.js) -- free, no model; every answer is
+// read off the same data as the page. She can also act: add/remove a
+// stock or open its page. Tickers and funds she names are tappable, and
+// her follow-up chips change with what you just asked.
 // Chat history lives in this browser's localStorage -- the same scope as
 // the signal_user_id cookie that identifies the watchlist. Each message is
 // timestamped: her answers describe the data at the moment she gave them,
@@ -241,7 +243,7 @@ const CHAT_KEY = 'signal-chat-v1'
 const CHAT_MAX = 200
 const greeting = () => ({
   from: 'her',
-  text: 'hiii! ask me what changed, how your stocks are doing, or about any stock by name.',
+  text: 'hiii! ask me about the market, any stock or mutual fund, what a word like RSI means, or tell me "add TCS" and i\'ll do it.',
   at: new Date().toISOString(),
 })
 
@@ -267,7 +269,26 @@ const dayLabel = (iso) => {
 const timeLabel = (iso) =>
   new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })
 
-function MascotChat({ watchlist, changed, mood, onReply }) {
+// Her text with the tickers/funds she named turned into buttons.
+function ChatText({ message, actions }) {
+  const links = message.links || []
+  if (!links.length) return message.text
+  const byLabel = new Map(links.map((l) => [l.label, l]))
+  const pattern = new RegExp(
+    `(${[...byLabel.keys()].sort((a, b) => b.length - a.length).map((l) => l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`,
+  )
+  return message.text.split(pattern).map((part, i) => {
+    const l = byLabel.get(part)
+    if (!l) return part
+    return (
+      <button key={i} className="chat-link" onClick={() => (l.fund ? actions.openFund(l.fund) : actions.open(l.symbol))}>
+        {part}
+      </button>
+    )
+  })
+}
+
+function MascotChat({ watchlist, changed, mood, onReply, actions }) {
   const [chatOpen, setChatOpen] = useState(false)
   const [messages, setMessages] = useState(loadChat)
   const [draft, setDraft] = useState('')
@@ -295,9 +316,17 @@ function MascotChat({ watchlist, changed, mood, onReply }) {
     setThinking(true)
     const answer = await replyAsync(text, { watchlist, changed, mood })
     setThinking(false)
-    setMessages((m) => [...m, { from: 'her', text: answer, at: new Date().toISOString() }].slice(-CHAT_MAX))
+    const { action, ...said } = answer
+    setMessages((m) => [...m, { from: 'her', ...said, at: new Date().toISOString() }].slice(-CHAT_MAX))
     onReply()
+    if (action?.type === 'add') actions.add(action.symbol)
+    if (action?.type === 'remove') actions.remove(action.symbol)
+    if (action?.type === 'open') actions.open(action.symbol)
   }
+
+  // Her latest follow-ups, or the starters if she hasn't suggested any.
+  const lastHer = [...messages].reverse().find((m) => m.from === 'her')
+  const chips = lastHer?.chips?.length ? lastHer.chips : QUICK_REPLIES
 
   const clearChat = () => setMessages([greeting()])
 
@@ -332,7 +361,7 @@ function MascotChat({ watchlist, changed, mood, onReply }) {
             <Fragment key={i}>
               {newDay && <li className="chat-day">{day}</li>}
               <li className={`chat-msg from-${m.from}`}>
-                {m.text}
+                {m.from === 'her' ? <ChatText message={m} actions={actions} /> : m.text}
                 {m.at && <time className="chat-time">{timeLabel(m.at)}</time>}
               </li>
             </Fragment>
@@ -347,8 +376,8 @@ function MascotChat({ watchlist, changed, mood, onReply }) {
         )}
       </ul>
       <div className="chat-chips">
-        {QUICK_REPLIES.map((q) => (
-          <button key={q} className="chat-chip" onClick={() => ask(q)}>
+        {chips.map((q) => (
+          <button key={q} className="chat-chip" onClick={() => ask(q)} disabled={thinking}>
             {q}
           </button>
         ))}
@@ -589,6 +618,9 @@ export default function App() {
     }
   }
 
+  // What the mascot can do when asked ("add TCS", "open INFY", tapping a ticker).
+  const chatActions = { add: handleAdd, remove: handleRemove, open: setOpenSymbol, openFund: setOpenFund }
+
   // Until the first fetch lands, the loading screen is the whole page.
   if (!loaded) return <LoadingCard count={watchlist.length} />
 
@@ -634,7 +666,7 @@ export default function App() {
 
       <main className="layout">
         <aside className="col-side">
-          <MoodCard watchlist={watchlist} changed={changed} mood={mood} />
+          <MoodCard watchlist={watchlist} changed={changed} mood={mood} actions={chatActions} />
           <AtAGlance watchlist={watchlist} changed={changed} />
         </aside>
 

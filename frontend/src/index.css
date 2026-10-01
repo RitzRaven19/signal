@@ -2135,3 +2135,36 @@ body {
   background: var(--groovy-red);
   box-shadow: 0 3px 0 var(--groovy-deep);
 }
+
+/* her avatar beside her bubbles; tappable tickers; follow-ups */
+.chat-log { max-height: 360px; }
+.chat-msg.from-her {
+  position: relative;
+  margin-left: 34px;
+}
+.chat-msg.from-her::before {
+  content: "";
+  position: absolute;
+  left: -36px;
+  bottom: -2px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--groovy-red);
+  background: #fff url("/mascot/mascot-happy.jpg") center 22% / 150% no-repeat;
+}
+.chat-link {
+  display: inline;
+  padding: 0 5px;
+  margin: 0 1px;
+  border: 1.5px solid var(--groovy-red);
+  border-radius: 999px;
+  background: var(--groovy-fill);
+  color: #7a1030;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 1.5px 1.5px 0 var(--groovy-red);
+}
+.chat-link:hover { background: #fff; }
+.chat-chip:disabled { opacity: 0.5; cursor: wait; }
