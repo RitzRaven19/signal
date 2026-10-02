@@ -2168,3 +2168,24 @@ body {
 }
 .chat-link:hover { background: #fff; }
 .chat-chip:disabled { opacity: 0.5; cursor: wait; }
+
+/* The mascot card is UI, not reading text: quick taps on her, the chips or
+   buttons were selecting it in browser blue. Only message text stays
+   selectable, so answers can still be copied. */
+.mood-card,
+.view-switcher,
+.lens-switcher {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.mood-card img {
+  -webkit-user-drag: none;
+}
+.chat-msg {
+  -webkit-user-select: text;
+  user-select: text;
+}
+.chat-time {
+  -webkit-user-select: none;
+  user-select: none;
+}
