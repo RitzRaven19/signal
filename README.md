@@ -164,18 +164,20 @@ Still to do:
 
 Measured with `python backend/backtest.py`, which replays both detectors over the stored NSE bhavcopy history (read-only).
 
-- **Universe:** the 100 most-traded NSE stocks, 12 Jun to 1 Oct 2026. That's 3,968 stock-days, including 9 market-wide days where NIFTY moved ≥1%.
+- **Universe:** the 100 most-traded NSE stocks, 3 Oct 2025 to 1 Oct 2026. That's 20,263 stock-days, including 46 market-wide days where NIFTY moved ≥1%, about 18% of sessions.
 - **Out of sample:** each day's beta and residual σ are fitted only on earlier sessions, using the same `fit_beta` / `detect_residual_move` code as the app.
-- **Label:** an alert counts as a *hit* if the next day's volume is ≥1.5× the stock's median volume over the prior 20 sessions. Both detectors look at price; the label looks at next-day volume, so neither detector is handed the answer. Base rate: 21.9% of all stock-days.
+- **Label:** an alert counts as a *hit* if the next day's volume is ≥1.5× the stock's median volume over the prior 20 sessions. Both detectors look at price; the label looks at next-day volume, so neither detector is handed the answer. Base rate: 22.2% of all stock-days.
 
 | Detector | Alerts fired | Precision (next-day volume follow-through) | Lift vs base rate | Alerts / user / day (20 stocks) | Share fired on market-wide days |
 |---|---|---|---|---|---|
-| Naive (±2% price) | 965 | 34.3% | 1.56x | 4.86 | 20% |
-| Naive, same alert count (±3.7%) | 310 | 44.5% | 2.03x | 1.56 | 22% |
-| Residual (this build) | 310 | 45.2% | 2.06x | 1.56 | 17% |
+| Naive (±2% price) | 5,352 | 32.8% | 1.48x | 5.28 | 38% |
+| Naive, same alert count (±3.7%) | 1,673 | 46.5% | 2.09x | 1.65 | 44% |
+| Residual (this build) | 1,673 | 46.3% | 2.09x | 1.65 | 26% |
 
-**What this does and doesn't show:**
-- **Against the ±2% rule, the residual detector fires 3× fewer alerts (1.6 vs 4.9 per user per day) with higher precision (45% vs 34%).** That's the noise reduction the project set out to deliver.
-- **But at the *same* alert count, it's no better than simply alerting on the biggest raw moves.** 45.2% vs 44.5% is within noise: with ~310 alerts each, the standard error is about ±3 points. On this data, most of the gain comes from alerting less, not from choosing better alerts.
-- **It does fire less on market-wide days** (17% of its alerts vs 22%), which is exactly the case it was designed for. But this period had only 9 such days, so that evidence is thin.
-- **Limitations:** 3.5 months of data; a volume-based proxy instead of labelled news or announcements; no transaction-level or intraday data. The next step is a longer history with more market-wide days, and a label from NSE corporate announcements.
+**What this shows:**
+- **Against the ±2% rule:** 3× fewer alerts (1.65 vs 5.28 per user per day) with higher precision (46% vs 33%).
+- **It stops alerting on market-wide moves, which is the point of the design.** Only 26% of residual alerts land on market-wide days, against 44% for a naive rule firing just as often. Naive rules pile alerts onto the days when everything moved together; the residual detector mostly stays quiet on them.
+- **What it doesn't show:** better precision than the biggest-raw-moves rule at the same alert count (46.3% vs 46.5%, within noise; the standard error is about ±1.2 points at ~1,700 alerts). On this label, removing market-driven alerts doesn't change how often the next day's volume jumps.
+- **Limitations:** a volume-based proxy rather than labelled news or announcements; end-of-day data only; one year. A label from NSE corporate announcements is the next step.
+
+An earlier run on only 3.5 months of history (9 market-wide days) showed the same precision tie but too few market-wide days to separate the detectors. The full year makes that difference clear.
