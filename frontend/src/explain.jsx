@@ -60,6 +60,10 @@ export const EXPLAIN = {
   'trade-real': ['trade for real', 'opens this stock in your broker’s app, where you place real orders yourself. Signal never places real orders.'],
   practice: ['practice trade', 'try buying it with pretend money in the shop. nothing real happens.'],
 
+  unusual: ['unusual moves', 'stocks that moved much more than the market explains, given how they usually move with it. something company-specific may have happened.'],
+  news: ['news & announcements', 'recent headlines about the company and its official filings with NSE, like results or press releases.'],
+  why: ['why did it move?', 'the AI reads the headlines and announcements and says what they mention that could relate to the move. it explains, it never predicts.'],
+
   // funds
   nav: ['NAV', 'a mutual fund’s price per unit: everything it owns divided by its units. set once a day after the market closes.'],
   cagr: ['per year (CAGR)', 'the average yearly growth. 12% CAGR over 3 years means it grew as if it gained 12% every year.'],

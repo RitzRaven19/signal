@@ -182,3 +182,37 @@ def test_quote_prefers_chart_previous_close(monkeypatch):
     q = sources.fetch_intraday_quote("^NSEI", client=object())
     assert q.prev_close == 22620.4
     assert round((q.price / q.prev_close - 1) * 100, 2) == -0.88
+
+
+# ── news ──────────────────────────────────────────────────────────────
+
+from app import news  # noqa: E402
+
+RSS = b"""<?xml version="1.0"?><rss><channel>
+<item><title>Bajaj Auto falls on weak September sales - CNBC TV18</title><link>https://x/1</link>
+<pubDate>Thu, 01 Oct 2026 10:00:00 GMT</pubDate><source url="https://cnbctv18.com">CNBC TV18</source></item>
+<item><title>Auto stocks slide - Mint</title><link>https://x/2</link><pubDate>bad date</pubDate><source>Mint</source></item>
+</channel></rss>"""
+
+
+def test_short_name_drops_legal_suffixes():
+    assert news.short_name("Tata Consultancy Services Limited", "TCS.NS") == "Tata Consultancy Services"
+    assert news.short_name("Titan Company Ltd.", "TITAN.NS") == "Titan Company"
+    assert news.short_name(None, "TCS.NS") == "TCS"
+
+
+def test_company_news_parses_feed_and_strips_source(monkeypatch):
+    class R:
+        content = RSS
+
+        def raise_for_status(self):
+            pass
+
+    seen = {}
+    monkeypatch.setattr(news.httpx, "get", lambda url, **kw: seen.setdefault("url", url) and R())
+    monkeypatch.setattr(news, "_news_cache", {})
+    items = news.company_news("BAJAJ-AUTO.NS", "Bajaj Auto Limited")
+    assert "%22Bajaj+Auto%22" in seen["url"]  # searches the brand, not the legal name
+    assert items[0]["title"] == "Bajaj Auto falls on weak September sales"
+    assert items[0]["source"] == "CNBC TV18" and items[0]["published"].startswith("2026-10-01")
+    assert items[1]["published"] is None  # a bad date doesn't break the feed

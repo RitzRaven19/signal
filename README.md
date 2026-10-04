@@ -31,6 +31,11 @@ Most watchlists tell you a stock moved. They can't tell you whether it mattered.
 - **Sector heat tiles** for 12 NIFTY sector indices.
 - **Top gainers, top losers, most active** across ~2,600 companies, with a liquidity floor (price ≥ ₹20, ≥ ₹1 Cr traded) so one tiny trade in a penny stock can't top the list.
 
+### 🚨 Unusual moves and "why did it move?"
+- **Unusual moves** (market tab): the last session's moves among the 150 most-traded stocks that the market doesn't explain. It uses the same beta/residual maths as the alerts, with each stock's beta fitted on the sessions before. For example, on 1 Oct 2026 Bajaj Auto fell 7.6% while NIFTY fell 0.9%, about 8.7× its usual unexplained move.
+- **News on every stock page:** recent headlines (Google News) and the company's official NSE announcements, linked to the originals.
+- **✨ why did it move?** The AI reads those headlines and announcements next to the day's move and summarizes what they mention. For Bajaj Auto: weaker-than-expected September two-wheeler sales, with other auto makers also down. It says "headlines mention…", never claims certainty, and **never predicts**. Predicting moves isn't something a free model can do reliably, and giving the public buy/sell calls or price predictions in India generally needs SEBI registration, so the app only explains what already happened.
+
 ### ✨ Scans — like StockEdge / Trendlyne
 Volume shockers (3x+ their own 20-day median volume), high delivery (60%+ held, not day-traded), block trades, near their 52-week high, plus gainers, losers and most active. Companies only — ETFs are filtered out using NSE's own equity list.
 
@@ -95,6 +100,8 @@ Not available for free, so not shown: fundamentals (P/E, results, shareholding),
 | `GET /api/search?q=` | ticker / company-name search |
 | `GET /api/stock/{symbol}` | stock page data (2y bars + NSE stats + alerts) |
 | `GET /api/funds/search?q=`, `GET /api/funds/{code}` | fund search, NAV history and returns |
+| `GET /api/unusual` | the last session's unexplained moves among the most-traded stocks |
+| `GET /api/stock/{symbol}/news`, `POST /api/stock/{symbol}/why` | headlines + NSE announcements; AI summary of what they mention about the move |
 | `GET /api/quotes?symbols=` | latest quotes for up to 30 symbols (practice portfolio) |
 | `GET /api/boutique?symbols=` | shop cards: last close, day/1-month change, daily volatility |
 | `POST /api/ai/explain` | AI explanation of what the user points at (Gemini free tier, rate-limited) |

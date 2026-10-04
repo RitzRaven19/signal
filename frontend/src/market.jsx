@@ -3,6 +3,7 @@
 // and type; only layout pieces specific to them live in index.css.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getMarket, getScan, getStock, searchSymbols } from './api'
+import { StockNews, UnusualMoves } from './incidents'
 import { ex } from './explain'
 import { GroovyText, MiniLoader } from './groovy'
 
@@ -237,6 +238,7 @@ export function MarketView({ onOpen }) {
         {vix?.price != null && <VixCard vix={vix} />}
       </div>
       <Sectors sectors={data.sectors} />
+      <UnusualMoves onOpen={onOpen} />
       <p className="inbox-subtitle">movers across every listed NSE company · closing data for {data.as_of_date}</p>
       <div className="mover-grid">
         {lists.map(([key, title]) => (
@@ -781,6 +783,8 @@ export function StockSheet({ symbol, inWatchlist, onAdd, onClose, onPractice }) 
             <h3 className="sheet-sub" {...ex('rsi')}>🔮 technicals</h3>
             <Technicals bars={data.bars} />
             <p className="tech-note">readings describe the chart, they aren't advice to buy or sell.</p>
+
+            <StockNews symbol={data.symbol} />
 
             <h3 className="sheet-sub" {...ex('alerts')}>🔔 recent alerts</h3>
             {data.events?.length ? (

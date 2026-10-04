@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from . import ai, funds, market, models, state_service
+from . import ai, funds, market, models, news, state_service
 from .db import get_engine
 from .detector import Event
 from .diff import diff_states, is_load_bearing
@@ -524,6 +524,56 @@ def ai_explain(body: AIExplainRequest, request: Request, signal_user_id: Optiona
     except ai.AIUnavailable as exc:
         return {"ok": False, "text": str(exc)}
     return {"ok": True, "text": text}
+
+
+@app.get("/api/unusual")
+def get_unusual():
+    """Today's moves the market doesn't explain, among the most-traded stocks."""
+    try:
+        return news.unusual_moves(get_engine())
+    except SourceError:
+        # NIFTY history unavailable (Yahoo refused): say so, don't claim "nothing unusual"
+        return {"as_of_date": None, "moves": [], "checked": 0, "unavailable": True}
+
+
+@app.get("/api/stock/{symbol}/news")
+def get_stock_news(symbol: str):
+    symbol = symbol.upper()
+    name = market.instrument_name(get_engine(), symbol)
+    return {"symbol": symbol, "news": news.company_news(symbol, name), "announcements": news.announcements(symbol)}
+
+
+@app.post("/api/stock/{symbol}/why")
+def why_it_moved(symbol: str, request: Request, signal_user_id: Optional[str] = Cookie(default=None)):
+    """AI summary of what today's headlines and NSE announcements mention
+    that could relate to the move. Explains; never predicts."""
+    symbol = symbol.upper()
+    name = market.instrument_name(get_engine(), symbol)
+    move = news.day_move(get_engine(), symbol)
+    pct = move["pct"] if move else None
+    npct = move["index_pct"] if move else None
+    heads = news.company_news(symbol, name)
+    anns = news.announcements(symbol)
+    if not heads and not anns:
+        return {"ok": False, "text": "i couldn't find any recent headlines or announcements for this company, so i can't say what's behind the move."}
+    day = f" on {move['date']}" if move else ""
+    lines = [f"{symbol} ({name}): {pct:+.2%}{day}" + (f"; NIFTY 50: {npct:+.2%} the same day." if npct is not None else ".") if pct is not None else f"{symbol} ({name})"]
+    lines += [f"NSE announcement {a['at']}: {a['subject']} - {a['text']}" for a in anns[:4]]
+    lines += [f"headline ({h['source']}, {(h['published'] or '')[:10]}): {h['title']}" for h in heads[:8]]
+    question = (
+        "using ONLY the price moves, announcements and headlines above, explain in plain words what they mention "
+        "that could relate to today's move, and whether the move looks company-specific or market-wide. say "
+        "'headlines mention…', never claim certainty, never predict what happens next, never advise. if nothing "
+        "seems related, say no clear reason shows up in the news. under 90 words."
+    )
+    visitor = signal_user_id or (request.client.host if request.client else "anon")
+    try:
+        text_ = ai.explain(visitor=visitor, title=f"why {symbol.replace('.NS', '')} moved today",
+                           about="what recent news and announcements mention", context="\n".join(lines),
+                           history=[], question=question)
+    except ai.AIUnavailable as exc:
+        return {"ok": False, "text": str(exc)}
+    return {"ok": True, "text": text_, "pct": pct, "index_pct": npct}
 
 
 @app.get("/api/search")

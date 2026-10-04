@@ -1,4 +1,4 @@
-# The web app (requirements.txt) plus what only the bhavcopy jobs need.
-# Kept separate so the Render web service doesn't install the NSE client.
+# What the daily bhavcopy job installs. Everything it needs, including the NSE
+# client, is now in requirements.txt (the web app uses that client for company
+# announcements); this file stays so the workflow keeps a stable entry point.
 -r requirements.txt
-nse==4.0.1

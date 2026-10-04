@@ -55,3 +55,9 @@ export const getQuotes = (symbols) => request(`/quotes?symbols=${encodeURICompon
 export const getBoutique = (symbols) => request(`/boutique?symbols=${encodeURIComponent(symbols.join(","))}`)
 
 export const askAI = (payload) => request('/ai/explain', { method: 'POST', body: JSON.stringify(payload) })
+
+export const getUnusual = () => request('/unusual')
+
+export const getStockNews = (symbol) => request(`/stock/${encodeURIComponent(symbol)}/news`)
+
+export const whyMoved = (symbol) => request(`/stock/${encodeURIComponent(symbol)}/why`, { method: 'POST' })
