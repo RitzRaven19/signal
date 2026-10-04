@@ -79,6 +79,16 @@ def load_daily_bars(date: datetime) -> pd.DataFrame:
     df = pd.read_csv(path, skipinitialspace=True)
     df = df[df["SERIES"] == "EQ"].copy()
 
+    # Trust the date printed in the file, not the date we asked for. Asked
+    # for Oct 2 (a holiday), the source handed back Oct 1's file, and it
+    # was stored as Oct 2: a duplicate day where every stock moved 0%.
+    file_dates = set(pd.to_datetime(df["DATE1"].str.strip(), format="%d-%b-%Y").dt.date)
+    if file_dates != {date.date()}:
+        raise BhavcopyUnavailable(
+            f"bhavcopy requested for {date.date()} is dated {sorted(str(d) for d in file_dates)} -- "
+            "treating the day as not published"
+        )
+
     out = pd.DataFrame(
         {
             "symbol": df["SYMBOL"].str.strip() + ".NS",
