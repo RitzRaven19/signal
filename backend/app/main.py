@@ -15,12 +15,12 @@ from pathlib import Path
 from typing import Literal, Optional
 
 import httpx
-from fastapi import Cookie, FastAPI, HTTPException, Response
+from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from . import funds, market, models, state_service
+from . import ai, funds, market, models, state_service
 from .db import get_engine
 from .detector import Event
 from .diff import diff_states, is_load_bearing
@@ -496,6 +496,30 @@ def get_quotes(symbols: str = ""):
 def get_boutique(symbols: str = ""):
     wanted = list(dict.fromkeys(s.strip().upper() for s in symbols.split(",") if s.strip()))[:60]
     return {"as_of_date": market.latest_date(get_engine()), "items": market.boutique(get_engine(), wanted) if wanted else {}}
+
+
+class AIExplainRequest(BaseModel):
+    title: str
+    about: str = ""
+    context: str = ""
+    question: str = ""
+    history: list[dict] = []
+
+
+@app.post("/api/ai/explain")
+def ai_explain(body: AIExplainRequest, request: Request, signal_user_id: Optional[str] = Cookie(default=None)):
+    """Beginner explanation of whatever the user points at (Gemini free tier).
+    Errors come back as 200 with ok=false and a friendly message, so the
+    page can fall back to its built-in explanation."""
+    visitor = signal_user_id or (request.client.host if request.client else "anon")
+    try:
+        text = ai.explain(
+            visitor=visitor, title=body.title[:120], about=body.about[:400],
+            context=body.context, history=body.history, question=body.question,
+        )
+    except ai.AIUnavailable as exc:
+        return {"ok": False, "text": str(exc)}
+    return {"ok": True, "text": text}
 
 
 @app.get("/api/search")

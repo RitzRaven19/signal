@@ -2587,3 +2587,45 @@ body.learn-mode [data-explain]:hover { outline-color: var(--groovy-red); backgro
 .learn-text { margin: 2px 0 4px; font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--text); }
 .learn-count { font-size: 11px; font-weight: 700; color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .learn-bubble { animation: none; } }
+
+/* pinned bubble + AI explainer panel */
+.learn-bubble.pinned { pointer-events: auto; }
+.ask-ai-btn {
+  margin-top: 2px;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--groovy-red);
+  color: #fff;
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--groovy-deep);
+}
+.ai-panel {
+  position: fixed;
+  z-index: 210;
+  right: 16px;
+  bottom: 16px;
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(560px, calc(100vh - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 2px solid var(--groovy-red);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 5px 5px 0 var(--groovy-red), 0 16px 34px rgba(215, 38, 61, 0.22);
+  animation: sheet-in 0.2s ease-out;
+}
+.ai-head { display: flex; align-items: center; gap: 10px; }
+.ai-head > div { flex: 1; display: flex; flex-direction: column; }
+.ai-log { list-style: none; margin: 0; padding: 2px 4px 2px 0; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; min-height: 80px; }
+.ai-log .chat-msg.from-her { margin-left: 0; }
+.ai-log .chat-msg.from-her::before { display: none; }
+.ai-fallback { opacity: 0.9; }
+.ai-builtin { display: block; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--groovy-fill); font-weight: 600; }
+.ai-note { margin: 0; font-size: 10.5px; font-weight: 600; color: var(--muted); line-height: 1.35; }
+@media (prefers-reduced-motion: reduce) { .ai-panel { animation: none; } }

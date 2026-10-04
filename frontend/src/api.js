@@ -53,3 +53,5 @@ export const getFund = (code) => request(`/funds/${encodeURIComponent(code)}`)
 export const getQuotes = (symbols) => request(`/quotes?symbols=${encodeURIComponent(symbols.join(","))}`)
 
 export const getBoutique = (symbols) => request(`/boutique?symbols=${encodeURIComponent(symbols.join(","))}`)
+
+export const askAI = (payload) => request('/ai/explain', { method: 'POST', body: JSON.stringify(payload) })

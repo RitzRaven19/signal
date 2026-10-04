@@ -2,7 +2,8 @@
 // data-explain shows a little mascot bubble explaining it -- hover on a
 // computer, tap on a phone. In this mode a tap explains instead of acting,
 // so learning never accidentally buys, removes or opens something.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { askAI } from './api'
 
 const MODE_KEY = 'signal-learn-mode'
 export const EXPLORED_KEY = 'signal-explored-v1'
@@ -113,21 +114,38 @@ export function LearnToggle({ on, setOn }) {
   )
 }
 
-// The floating bubble. Listens on the whole page while learn mode is on.
+
+// What's on screen around the thing being pointed at -- the numbers the AI
+// should use. Only page text; nothing about who the user is.
+function contextFor(el) {
+  const clean = (t) => (t || '').replace(/\s+/g, ' ').trim()
+  const own = clean(el.closest('.product-card, .mkt-row, .tech-row, .stat-list > div, .index-card, .sector-tile, .watch-row')?.innerText || el.innerText)
+  const area = clean(el.closest('.sheet, .pane')?.innerText)
+  return `pointed at: ${own.slice(0, 400)}\nsection: ${area.slice(0, 1400)}`
+}
+
+// The floating bubble. Hover shows it; a click pins it so its "ask AI"
+// button can be reached. Listens on the whole page while learn mode is on.
 export function LearnBubble({ on }) {
   const [tip, setTip] = useState(null)
   const [explored, setExplored] = useState(readExplored)
+  const [chat, setChat] = useState(null) // { title, about, context, messages, loading }
+  const pinned = useRef(false)
 
   useEffect(() => {
     if (!on) {
       setTip(null)
+      setChat(null)
+      pinned.current = false
       return
     }
     const find = (el) => el?.closest?.('[data-explain]')
-    const show = (target, x, y) => {
+    const ours = (el) => el?.closest?.('.learn-bubble, .ai-panel, .learn-toggle')
+    const show = (target, x, y, pin) => {
       const key = target.getAttribute('data-explain')
       if (!EXPLAIN[key]) return
-      setTip({ key, x, y })
+      pinned.current = pin
+      setTip({ key, x, y, pin, context: contextFor(target) })
       setExplored((prev) => {
         if (prev.has(key)) return prev
         const next = new Set(prev).add(key)
@@ -140,22 +158,29 @@ export function LearnBubble({ on }) {
       })
     }
     const over = (e) => {
-      if (e.pointerType === 'touch') return
+      if (e.pointerType === 'touch' || pinned.current || ours(e.target)) return
       const t = find(e.target)
-      if (t) show(t, e.clientX, e.clientY)
-      else if (!e.target.closest?.('.learn-bubble')) setTip(null)
+      if (t) show(t, e.clientX, e.clientY, false)
+      else setTip(null)
     }
-    // In learn mode a tap explains instead of acting.
+    // In learn mode a click/tap explains (and pins) instead of acting.
     const click = (e) => {
-      if (e.target.closest?.('.learn-toggle, .learn-bubble')) return
+      if (ours(e.target)) return
       const t = find(e.target)
-      if (!t) return setTip(null)
+      if (!t) {
+        pinned.current = false
+        return setTip(null)
+      }
       e.preventDefault()
       e.stopPropagation()
       const r = t.getBoundingClientRect()
-      show(t, r.left + r.width / 2, r.bottom)
+      show(t, r.left + r.width / 2, r.bottom, true)
     }
-    const esc = (e) => e.key === 'Escape' && setTip(null)
+    const esc = (e) => {
+      if (e.key !== 'Escape') return
+      pinned.current = false
+      setTip(null)
+    }
     document.addEventListener('pointerover', over)
     document.addEventListener('click', click, true)
     document.addEventListener('keydown', esc)
@@ -166,23 +191,107 @@ export function LearnBubble({ on }) {
     }
   }, [on])
 
-  if (!on || !tip) return null
+  const send = async (state, question) => {
+    const history = state.messages.map((m) => ({ role: m.role, text: m.text }))
+    const next = { ...state, loading: true, messages: question ? [...state.messages, { role: 'user', text: question }] : state.messages }
+    setChat(next)
+    let reply
+    try {
+      reply = await askAI({ title: state.title, about: state.about, context: state.context, history, question })
+    } catch {
+      reply = { ok: false, text: "i couldn't reach the AI just now. try again in a moment?" }
+    }
+    setChat((c) => c && { ...c, loading: false, messages: [...c.messages, { role: 'model', text: reply.text, fallback: !reply.ok }] })
+  }
+
+  const openChat = () => {
+    const [title, about] = EXPLAIN[tip.key]
+    const state = { title, about, context: tip.context, messages: [], loading: false }
+    pinned.current = false
+    setTip(null)
+    send(state, '')
+  }
+
+  if (!on) return null
+  return (
+    <>
+      {tip && <Bubble tip={tip} explored={explored} onAsk={openChat} />}
+      {chat && <AiPanel chat={chat} onSend={(q) => send(chat, q)} onClose={() => setChat(null)} />}
+    </>
+  )
+}
+
+function Bubble({ tip, explored, onAsk }) {
   const [title, text] = EXPLAIN[tip.key]
   const W = 280
   const left = Math.max(12, Math.min(tip.x - W / 2, window.innerWidth - W - 12))
-  const below = tip.y < window.innerHeight - 190
+  const below = tip.y < window.innerHeight - 220
   const style = below ? { left, top: tip.y + 16 } : { left, bottom: window.innerHeight - tip.y + 16 }
   const total = Object.keys(EXPLAIN).length
   return (
-    <div className="learn-bubble" style={{ ...style, width: W }} role="tooltip">
+    <div className={tip.pin ? 'learn-bubble pinned' : 'learn-bubble'} style={{ ...style, width: W }} role="tooltip">
       <span className="learn-avatar" aria-hidden="true" />
       <div>
         <strong className="learn-title">{title}</strong>
         <p className="learn-text">{text}</p>
-        <span className="learn-count">
-          you’ve explored {explored.size}/{total} things ✨
-        </span>
+        {tip.pin ? (
+          <button className="ask-ai-btn" onClick={onAsk}>
+            ask AI more ✨
+          </button>
+        ) : (
+          <span className="learn-count">click to ask the AI about it · explored {explored.size}/{total} ✨</span>
+        )}
       </div>
     </div>
+  )
+}
+
+function AiPanel({ chat, onSend, onClose }) {
+  const [draft, setDraft] = useState('')
+  const logRef = useRef(null)
+  useEffect(() => {
+    logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' })
+  }, [chat.messages, chat.loading])
+  const submit = (e) => {
+    e.preventDefault()
+    if (!draft.trim() || chat.loading) return
+    onSend(draft.trim())
+    setDraft('')
+  }
+  return (
+    <aside className="ai-panel" aria-label="AI explainer">
+      <div className="ai-head">
+        <span className="learn-avatar" aria-hidden="true" />
+        <div>
+          <strong className="learn-title">{chat.title}</strong>
+          <span className="learn-count">explained by AI · may make mistakes</span>
+        </div>
+        <button className="chat-close" onClick={onClose} aria-label="close AI explainer">
+          ×
+        </button>
+      </div>
+      <ul className="ai-log" ref={logRef} aria-live="polite">
+        {chat.messages.map((m, i) => (
+          <li key={i} className={`chat-msg from-${m.role === 'user' ? 'you' : 'her'}${m.fallback ? ' ai-fallback' : ''}`}>
+            {m.text}
+            {m.fallback && <span className="ai-builtin">{chat.about}</span>}
+          </li>
+        ))}
+        {chat.loading && (
+          <li className="chat-msg from-her chat-typing" aria-label="thinking">
+            <span />
+            <span />
+            <span />
+          </li>
+        )}
+      </ul>
+      <form className="chat-form" onSubmit={submit}>
+        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="ask a follow-up…" aria-label="follow-up question" />
+        <button type="submit" disabled={chat.loading}>
+          ask
+        </button>
+      </form>
+      <p className="ai-note">sent to Google’s free Gemini AI along with the text on screen; Google may use it to improve its products. don’t type personal info. explanations only, never advice.</p>
+    </aside>
   )
 }

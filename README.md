@@ -48,6 +48,11 @@ A beginner-friendly way in, inspired by learn-to-invest apps for women like Fema
 
 **Designed against the known harms of gamified trading.** Research by the Ontario Securities Commission found that rewarding trades (points, confetti, leaderboards) raised trading frequency by about 40%, while diversification scores, goals and progress for learning helped investors. So nothing here rewards the number of trades, there are no leaderboards or confetti on buying, and the vibe tags describe past swings rather than recommend anything. Everything is saved in your browser.
 
+### 🔍 Point & learn, with an AI explainer
+Switch on **point & learn** in the header and point at anything (hover on a computer, tap on a phone): RSI, delivery %, the freshness badges, the 52-week range, vibe tags, NAV, P&L. A mascot bubble explains it in plain words. In this mode a tap explains instead of acting, so learning never accidentally buys or removes something. Click a bubble and **ask AI more ✨** opens a small chat where Google's free **Gemini** model explains that exact thing using the numbers on screen, and answers follow-ups.
+
+The AI is instructed to explain and describe only: no buy/sell advice, no predictions, no invented numbers. The key stays on the server. Use is capped per visitor and per day to stay inside the free tier, and repeat questions are cached. Without a key, everything falls back to the built-in explanations. On Gemini's free tier Google may use what's sent to improve its products, so the panel says so and only page text is sent, never anything identifying the user.
+
 ### The mascot chat
 She's a rule-based helper (no AI model, no paid API) who reads the same data the page shows, so she can't contradict the screen:
 - *"how's the market?"*, *"best sector today?"*, *"top losers"*, *"fear gauge"*
@@ -88,6 +93,7 @@ Not available for free, so not shown: fundamentals (P/E, results, shareholding),
 | `GET /api/funds/search?q=`, `GET /api/funds/{code}` | fund search, NAV history and returns |
 | `GET /api/quotes?symbols=` | latest quotes for up to 30 symbols (practice portfolio) |
 | `GET /api/boutique?symbols=` | shop cards: last close, day/1-month change, daily volatility |
+| `POST /api/ai/explain` | AI explanation of what the user points at (Gemini free tier, rate-limited) |
 | `GET /api/health/sources` | data-source health |
 
 ## Setup (clean clone, Postgres already provisioned)
@@ -101,7 +107,7 @@ cd frontend && npm install && npm run build && cd ../backend
 uvicorn app.main:app --reload
 ```
 
-Open `http://127.0.0.1:8000`. `DATABASE_URL` is the only variable needed.
+Open `http://127.0.0.1:8000`. `DATABASE_URL` is the only variable needed. For the AI explainer, also set `GEMINI_API_KEY` (a free key from Google AI Studio); it's optional.
 
 To run the daily ingest yourself: `pip install -r backend/requirements-ingest.txt` and `python backend/ingest_daily.py`. For the scheduled job, add `DATABASE_URL` as a repository secret on GitHub.
 
