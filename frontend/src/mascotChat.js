@@ -143,7 +143,7 @@ const SCANS = [
   [['volume shocker', 'volume spike', 'unusual volume'], 'volume_shockers', 'traded 3x+ their usual volume', 'volume shockers'],
   [['high delivery', 'delivery buying'], 'high_delivery', 'had 60%+ delivery (people holding, not day-trading)', 'high delivery stocks'],
   [['block trade', 'big trades', 'whale'], 'block_trades', 'had block trades', 'block trades'],
-  [['near high', '52 week high', '52-week high', 'near their high', 'all time high'], 'near_high', 'closed near their recent high', 'stocks near their high'],
+  [['near high', '52 week high', '52-week high', 'near their high', 'all time high'], 'near_high', 'closed near their 52-week high', 'stocks near their 52-week high'],
 ]
 
 // Plain-words explainers. Kept factual and short; nothing here predicts.

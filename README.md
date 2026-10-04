@@ -32,7 +32,7 @@ Most watchlists tell you a stock moved. They can't tell you whether it mattered.
 - **Top gainers, top losers, most active** across ~2,600 companies, with a liquidity floor (price ≥ ₹20, ≥ ₹1 Cr traded) so one tiny trade in a penny stock can't top the list.
 
 ### ✨ Scans — like StockEdge / Trendlyne
-Volume shockers (3x+ their own 20-day median volume), high delivery (60%+ held, not day-traded), block trades, near their recent high, plus gainers, losers and most active. Companies only — ETFs are filtered out using NSE's own equity list.
+Volume shockers (3x+ their own 20-day median volume), high delivery (60%+ held, not day-traded), block trades, near their 52-week high, plus gainers, losers and most active. Companies only — ETFs are filtered out using NSE's own equity list.
 
 ### Stock pages
 Hand-drawn SVG price chart (1m–2y, hover readout, optional 50/200-day averages), returns over 1w/1m/3m/6m/1y, today's and 52-week range bars, volume vs 20-day average, **delivery %** and trade count from NSE's bhavcopy, recent alerts, and **technicals in plain words**: RSI, price vs 50/200-day averages, golden/death-cross zone. These readings describe the chart; they never recommend.

@@ -261,7 +261,11 @@ def fetch_intraday_quote(symbol: str, client: Optional[httpx.Client] = None) -> 
         volumes = quote_block.get("volume") or []
         volume = next((v for v in reversed(volumes) if v is not None), 0)
 
-        prev_close = meta.get("previousClose", meta.get("chartPreviousClose"))
+        # chartPreviousClose (the close before this 1-day chart) is the real
+        # previous session. meta.previousClose was seen stale: NIFTY on Oct 1
+        # 2026 showed -1.30% against 22,716 when the Sep 30 close was 22,620
+        # (-0.88%). Use it only as a fallback.
+        prev_close = meta.get("chartPreviousClose") or meta.get("previousClose")
 
         return Quote(
             symbol=symbol,

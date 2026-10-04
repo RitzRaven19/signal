@@ -270,7 +270,7 @@ const SCAN_WHY = {
   volume_shockers: 'traded at 3x or more of their own usual 20-day volume today. something got people interested.',
   high_delivery: "60%+ of today's volume was taken as delivery: buyers holding the shares, not just day-trading them.",
   block_trades: 'a few very large trades moved real size today, often institutions buying or selling.',
-  near_high: 'closing within 2% of the highest price in the history we hold (about the last 3–4 months).',
+  near_high: 'closing within 2% of their highest price in the last 52 weeks.',
   gainers: "today's biggest rises among companies with real trading activity (₹1 Cr+ traded, price ₹20+).",
   losers: "today's biggest falls among companies with real trading activity.",
   most_active: 'the companies with the most money traded today.',

@@ -168,3 +168,17 @@ def test_ai_per_visitor_limit(gemini):
     with pytest.raises(ai.AIUnavailable):
         _ask(question="one too many")
     _ask(visitor="someone-else", question="fine")  # other visitors unaffected
+
+
+def test_quote_prefers_chart_previous_close(monkeypatch):
+    # meta.previousClose was stale (22,716) while the real Sep 30 close was 22,620
+    as_of = _ist(2026, 10, 1, 15, 30)
+    payload = {"chart": {"result": [{
+        "meta": {"regularMarketPrice": 22421.95, "regularMarketTime": int(as_of.timestamp()),
+                 "previousClose": 22716.2, "chartPreviousClose": 22620.4},
+        "indicators": {"quote": [{"volume": [100]}]},
+    }]}}
+    monkeypatch.setattr(sources, "_get_with_retry", lambda client, url, params: payload)
+    q = sources.fetch_intraday_quote("^NSEI", client=object())
+    assert q.prev_close == 22620.4
+    assert round((q.price / q.prev_close - 1) * 100, 2) == -0.88

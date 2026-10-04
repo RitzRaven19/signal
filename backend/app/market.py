@@ -79,13 +79,17 @@ _SCAN_SQL = {
           and today.deliv_pct >= 60
         order by today.deliv_pct desc limit :limit
     """,
-    # Within 2% of the highest close in the history we hold (~3-4 months).
+    # Within 2% of the highest close over the last 52 weeks. Needs most of a
+    # year of history for the stock, so new listings don't count as "at a high".
     "near_high": _TODAY_VS_PREV + """,
-    hi as (select symbol, max(close) as high_close, count(*) as days from daily_bars group by symbol)
+    hi as (
+        select symbol, max(close) as high_close, count(*) as days
+        from daily_bars where d > (select d from t) - 365 group by symbol
+    )
         select today.*, today.close / prev.close - 1 as pct, hi.high_close, hi.days as history_days
         from today join prev using (symbol) join hi using (symbol)
         where today.close >= :min_price and today.traded_value >= :min_value
-          and hi.days >= 40 and today.close >= 0.98 * hi.high_close
+          and hi.days >= 200 and today.close >= 0.98 * hi.high_close
         order by today.traded_value desc limit :limit
     """,
     "block_trades": _TODAY_VS_PREV + """
@@ -104,7 +108,7 @@ SCANS = {
     "most_active": "most active (by value traded)",
     "volume_shockers": "volume shockers (3x+ their usual volume)",
     "high_delivery": "high delivery (60%+ held, not day-traded)",
-    "near_high": "near their recent high",
+    "near_high": "near their 52-week high",
     "block_trades": "block trades (big-lot buying or selling)",
 }
 
