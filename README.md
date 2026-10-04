@@ -10,7 +10,9 @@ Around that core it's a full, free market companion: market overview, readymade 
 
 **Live:** https://signal-jagk.onrender.com (free tier — the first visit after a while can take 30–60s to wake up)
 
-![Signal market view](docs/screenshot-market.png)
+![Signal demo: market, point & learn with a live AI explanation, the stock shop and the chat](docs/demo.gif)
+
+*30-second tour. The AI answer in it is a real Gemini response, built from the numbers on screen.*
 
 ## 100-word pitch
 

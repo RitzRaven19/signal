@@ -24,7 +24,7 @@ from . import ai, funds, market, models, state_service
 from .db import get_engine
 from .detector import Event
 from .diff import diff_states, is_load_bearing
-from .sources import SourceError, fetch_daily_history, fetch_intraday_quote, fetch_stock_chart
+from .sources import SourceError, fetch_daily_history, fetch_intraday_quote, fetch_stock_chart, nse_is_open
 
 app = FastAPI(title="Signal")
 
@@ -418,6 +418,9 @@ SECTORS = [
     ("^CNXCONSUM", "consumption"),
 ]
 INDEX_CACHE_SECONDS = 60
+# Outside NSE hours prices don't move, and Yahoo can take 15s+ for all 18
+# quotes (seen Oct 2026) -- keep them longer so evening visits are fast.
+INDEX_CACHE_CLOSED_SECONDS = 900
 _index_cache: dict = {"at": None, "data": None}
 
 
@@ -438,7 +441,8 @@ def _index_quotes() -> tuple[list, list]:
     for a minute -- 18 Yahoo calls one after another took ~10s, and every
     visitor re-fetching them would just get us rate-limited."""
     now = datetime.now(timezone.utc)
-    if _index_cache["at"] and now - _index_cache["at"] < timedelta(seconds=INDEX_CACHE_SECONDS):
+    ttl = INDEX_CACHE_SECONDS if nse_is_open(now) else INDEX_CACHE_CLOSED_SECONDS
+    if _index_cache["at"] and now - _index_cache["at"] < timedelta(seconds=ttl):
         return _index_cache["data"]
     wanted = INDICES + SECTORS
     with httpx.Client(timeout=15) as client, ThreadPoolExecutor(max_workers=8) as pool:
