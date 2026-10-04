@@ -71,7 +71,7 @@ She's a rule-based helper (no AI model, no paid API) who reads the same data the
 - Tickers she names are tappable, follow-up chips adapt to what you asked, and history is kept in your browser.
 - She refuses buy/sell advice, every time.
 
-## Data sources (all free, no API keys)
+## Data sources (all free)
 
 | What | Source |
 |---|---|
@@ -79,6 +79,10 @@ She's a rule-based helper (no AI model, no paid API) who reads the same data the
 | Delivery %, trade counts, block-trade detection, movers and scans | NSE delivery bhavcopy, ingested daily |
 | Company names, equity vs ETF | NSE's `EQUITY_L.csv` and ETF list |
 | Mutual fund NAVs | AMFI, via mfapi.in |
+| Company headlines | Google News RSS search |
+| Corporate announcements | NSE corporate announcements |
+| Brand icons in the shop | each company website's favicon, via Google's favicon service |
+| AI explanations | Google Gemini free tier (the only part needing a key: a free `GEMINI_API_KEY`; everything else works without it) |
 
 Not available for free, so not shown: fundamentals (P/E, results, shareholding), FII/DII flows, insider trades, tick-by-tick data, option chains.
 
