@@ -20,8 +20,9 @@ from collections import defaultdict, deque
 import httpx
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-DEFAULT_MODEL = "gemini-2.5-flash"
-TIMEOUT = 25
+DEFAULT_MODEL = "gemini-3.8-flash"  # 2.5 models are closed to new accounts (Oct 2026)
+FALLBACK_MODEL = "gemini-3.5-flash"
+TIMEOUT = 40  # free-tier answers measured at 8-20s
 MAX_CONTEXT_CHARS = 1800
 MAX_TURNS = 8
 MAX_QUESTION_CHARS = 400
@@ -109,15 +110,24 @@ def explain(*, visitor: str, title: str, about: str, context: str, history: list
 
     model = os.environ.get("GEMINI_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
     config: dict = {"maxOutputTokens": 400, "temperature": 0.6}
-    if model.startswith("gemini-2.5"):
-        config["thinkingConfig"] = {"thinkingBudget": 0}  # short explainers don't need it; faster
+    # Without this, thinking used up the output budget and answers came back
+    # cut off ("Hello" + MAX_TOKENS); short explainers don't need it.
+    config["thinkingConfig"] = {"thinkingBudget": 0}
     body = {"systemInstruction": {"parts": [{"text": SYSTEM}]}, "contents": contents, "generationConfig": config}
 
-    try:
-        r = httpx.post(GEMINI_URL.format(model=model), headers={"x-goog-api-key": key}, json=body, timeout=TIMEOUT)
-    except httpx.HTTPError as exc:
-        raise AIUnavailable("i couldn't reach the AI just now. try again in a moment?") from exc
-    if r.status_code == 429:
+    # Free-tier models get overloaded now and then (503 "high demand", seen
+    # Oct 2026); try a second free model once before giving up.
+    r = None
+    for m in dict.fromkeys([model, FALLBACK_MODEL]):
+        try:
+            r = httpx.post(GEMINI_URL.format(model=m), headers={"x-goog-api-key": key}, json=body, timeout=TIMEOUT)
+        except httpx.HTTPError:
+            continue
+        if r.status_code not in (429, 500, 503):
+            break
+    if r is None:
+        raise AIUnavailable("i couldn't reach the AI just now. try again in a moment?")
+    if r.status_code in (429, 500, 503):
         raise AIUnavailable("the free AI is busy right now. try again in a minute!")
     if r.status_code >= 400:
         raise AIUnavailable("the AI had a hiccup, so here's my built-in explanation instead.")
