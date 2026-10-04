@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 import { getFund, searchFunds } from './api'
 import { FUND_RANGES, PriceChart, fmtPct } from './market'
+import { ex } from './explain'
 import { GroovyText, MiniLoader } from './groovy'
 
 const dir = (p) => (p == null ? 'flat' : p >= 0 ? 'up' : 'down')
@@ -90,7 +91,7 @@ export function FundsView({ onOpen }) {
                     <span className="symbol fund-title">{title}</span>
                     <span className="fund-tags">
                       {tags.map((t) => (
-                        <em key={t}>{t.toLowerCase()}</em>
+                        <em key={t} {...ex(/direct|regular/i.test(t) ? 'fund-plan' : undefined)}>{t.toLowerCase()}</em>
                       ))}
                     </span>
                   </div>
@@ -168,7 +169,7 @@ export function FundSheet({ code, onClose }) {
               {data.type && <span className="glance-pill muted">{data.type.toLowerCase()}</span>}
             </div>
             <div className="sheet-price">
-              <span className="big-price">{fmtNav(data.nav)}</span>
+              <span className="big-price" {...ex('nav')}>{fmtNav(data.nav)}</span>
               <span className={`change ${dir(data.day_change)}`}>{fmtPct(data.day_change)} day</span>
               <span className="badge badge-closed">NAV of {new Date(data.nav_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             </div>
@@ -183,7 +184,7 @@ export function FundSheet({ code, onClose }) {
             <h3 className="sheet-sub">📅 returns</h3>
             <div className="returns fund-returns">
               {RETURN_CELLS.map(([key, label, annual]) => (
-                <div key={key} className="return-cell">
+                <div key={key} className="return-cell" {...ex(annual ? 'cagr' : 'returns')}>
                   <span className="return-label">{label}</span>
                   <span className={`change ${dir(data.returns[key])}`}>{fmtPct(data.returns[key])}</span>
                   {annual && <span className="return-sub">per year</span>}

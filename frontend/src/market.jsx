@@ -3,6 +3,7 @@
 // and type; only layout pieces specific to them live in index.css.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getMarket, getScan, getStock, searchSymbols } from './api'
+import { ex } from './explain'
 import { GroovyText, MiniLoader } from './groovy'
 
 const bare = (s) => (s || '').replace(/\.NS$/, '')
@@ -142,7 +143,7 @@ function Breadth({ breadth }) {
   const upShare = advances / total
   const verdict = upShare >= 0.6 ? 'most stocks rose 🌷' : upShare <= 0.4 ? 'most stocks fell 🥀' : 'a mixed day 🌗'
   return (
-    <section className="pane breadth">
+    <section className="pane breadth" {...ex('breadth')}>
       <div className="breadth-head">
         <span className="index-name">market breadth</span>
         <span className="breadth-verdict">{verdict}</span>
@@ -166,7 +167,7 @@ function Breadth({ breadth }) {
 function VixCard({ vix }) {
   const level = vix.price < 13 ? 'calm' : vix.price < 18 ? 'a little jittery' : vix.price < 25 ? 'nervous' : 'scared'
   return (
-    <section className="pane vix" title="India VIX: how much movement traders expect over the next month">
+    <section className="pane vix" {...ex('vix')}>
       <span className="index-name">fear gauge · india vix</span>
       <span className="index-price">{vix.price.toFixed(2)}</span>
       <span className="vix-line">
@@ -190,7 +191,7 @@ function Sectors({ sectors }) {
           const strength = Math.min(Math.abs(s.pct_change) / 0.03, 1)
           const style = { '--heat': (0.4 + strength * 0.6).toFixed(2) }
           return (
-            <div key={s.symbol} className={`sector-tile ${dir(s.pct_change)}`} style={style}>
+            <div key={s.symbol} className={`sector-tile ${dir(s.pct_change)}`} style={style} {...ex('sector')}>
               <span className="sector-name">{s.name}</span>
               <span className="sector-pct">{fmtPct(s.pct_change)}</span>
             </div>
@@ -224,7 +225,7 @@ export function MarketView({ onOpen }) {
         {data.indices
           .filter((i) => i !== vix)
           .map((i) => (
-            <section className="pane index-card" key={i.symbol}>
+            <section className="pane index-card" key={i.symbol} {...ex('index')}>
               <span className="index-name">{i.name}</span>
               <span className="index-price">{i.price != null ? i.price.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '—'}</span>
               <span className={`change ${dir(i.pct_change)}`}>{fmtPct(i.pct_change)}</span>
@@ -240,7 +241,7 @@ export function MarketView({ onOpen }) {
       <div className="mover-grid">
         {lists.map(([key, title]) => (
           <section className="pane" key={key}>
-            <h2 className="groovy-title"><GroovyText text={title} /></h2>
+            <h2 className="groovy-title" {...ex(key === 'most_active' ? 'most-active' : key)}><GroovyText text={title} /></h2>
             <ul className="mkt-list">
               {data.movers[key].map((r) => (
                 <StockRow key={r.symbol} row={r} onOpen={onOpen} extra={key === 'most_active' ? fmtCr(r.traded_value) : null} />
@@ -301,7 +302,7 @@ export function ScansView({ onOpen }) {
 
   return (
     <section className="pane">
-      <h2 className="groovy-title"><GroovyText text={'✨ readymade scans'} /></h2>
+      <h2 className="groovy-title" {...ex('scans')}><GroovyText text={'✨ readymade scans'} /></h2>
       <div className="lens-switcher scan-chips">
         {SCAN_ORDER.map((s) => (
           <button key={s} className={scan === s ? 'lens-btn active' : 'lens-btn'} onClick={() => setScan(s)}>
@@ -455,7 +456,7 @@ export function PriceChart({ bars, ranges = RANGES, defaultRange = '3m', withAve
   }
 
   return (
-    <div className="chart">
+    <div className="chart" {...ex('chart')}>
       <div className="chart-head">
         <span className="chart-readout">
           {h ? (
@@ -518,7 +519,7 @@ export function PriceChart({ bars, ranges = RANGES, defaultRange = '3m', withAve
         )}
       </svg>
       {withAverages && (
-        <div className="chart-toggles">
+        <div className="chart-toggles" {...ex('averages')}>
           {AVERAGES.map(([key, label, n]) => (
             <button
               key={key}
@@ -553,7 +554,7 @@ export function periodReturn(closes, n) {
 function Returns({ bars }) {
   const closes = bars.map((b) => b.c)
   return (
-    <div className="returns">
+    <div className="returns" {...ex('returns')}>
       {PERIODS.map(([label, n]) => {
         const r = periodReturn(closes, n)
         return (
@@ -588,23 +589,27 @@ function Technicals({ bars }) {
   const rows = [
     r != null && {
       label: 'RSI (14 day)',
+      explain: 'rsi',
       value: r.toFixed(0),
       read: rsiReading(r),
       loud: r >= 70 || r <= 30,
     },
     s50 != null && {
       label: 'vs 50-day average',
+      explain: 'vs-avg',
       value: fmtPct(last / s50 - 1),
       read: last >= s50 ? 'above it: short-term trend is up' : 'below it: short-term trend is down',
     },
     s200 != null && {
       label: 'vs 200-day average',
+      explain: 'vs-avg',
       value: fmtPct(last / s200 - 1),
       read: last >= s200 ? 'above it: long-term trend is up' : 'below it: long-term trend is down',
     },
     s50 != null &&
       s200 != null && {
         label: '50d vs 200d average',
+        explain: 'cross',
         value: s50 >= s200 ? 'golden ✨' : 'death 🥀',
         read:
           s50 >= s200
@@ -616,7 +621,7 @@ function Technicals({ bars }) {
   return (
     <ul className="technicals">
       {rows.map((t) => (
-        <li key={t.label} className={t.loud ? 'tech-row tech-loud' : 'tech-row'}>
+        <li key={t.label} className={t.loud ? 'tech-row tech-loud' : 'tech-row'} {...ex(t.explain)}>
           <span className="tech-label">{t.label}</span>
           <span className="tech-value">{t.value}</span>
           <span className="tech-read">{t.read}</span>
@@ -629,11 +634,11 @@ function Technicals({ bars }) {
 
 // ── Stock page (Groww-style), shown as a sheet over the app ───────────
 
-function RangeBar({ low, high, value, label }) {
+function RangeBar({ low, high, value, label, explain }) {
   if (low == null || high == null || value == null || high <= low) return null
   const pos = Math.max(0, Math.min(1, (value - low) / (high - low))) * 100
   return (
-    <div className="range-bar">
+    <div className="range-bar" {...ex(explain)}>
       <div className="range-labels">
         <span>{fmtPrice(low)}</span>
         <span className="range-title">{label}</span>
@@ -658,15 +663,15 @@ function TradeLinks({ symbol, onPractice }) {
   return (
     <div className="trade-links">
       {onPractice && (
-        <button className="ack-btn trade-practice" onClick={() => onPractice(symbol)}>
+        <button className="ack-btn trade-practice" onClick={() => onPractice(symbol)} {...ex('practice')}>
           🎀 practice trade
         </button>
       )}
-      <span className="trade-label">trade for real on</span>
-      <a className="trade-link" href={`https://groww.in/search?q=${t}`} target="_blank" rel="noopener noreferrer">
+      <span className="trade-label" {...ex('trade-real')}>trade for real on</span>
+      <a className="trade-link" {...ex('trade-real')} href={`https://groww.in/search?q=${t}`} target="_blank" rel="noopener noreferrer">
         Groww ↗
       </a>
-      <a className="trade-link" href={`https://zerodha.com/markets/stocks/NSE/${t}/`} target="_blank" rel="noopener noreferrer">
+      <a className="trade-link" {...ex('trade-real')} href={`https://zerodha.com/markets/stocks/NSE/${t}/`} target="_blank" rel="noopener noreferrer">
         Zerodha ↗
       </a>
     </div>
@@ -730,54 +735,54 @@ export function StockSheet({ symbol, inWatchlist, onAdd, onClose, onPractice }) 
               )}
             </div>
             <div className="sheet-price">
-              <span className="big-price">{fmtPrice(data.price)}</span>
-              <span className={`change ${dir(data.pct_change)}`}>{fmtPct(data.pct_change)} today</span>
-              <span className={`badge badge-${data.staleness}`}>{data.staleness === 'closed' ? '🌙 last close' : data.staleness}</span>
+              <span className="big-price" {...ex('big-price')}>{fmtPrice(data.price)}</span>
+              <span className={`change ${dir(data.pct_change)}`} {...ex('pct-day')}>{fmtPct(data.pct_change)} today</span>
+              <span className={`badge badge-${data.staleness}`} {...ex(`badge-${data.staleness}`)}>{data.staleness === 'closed' ? '🌙 last close' : data.staleness}</span>
             </div>
             <TradeLinks symbol={data.symbol} onPractice={onPractice} />
 
             <PriceChart bars={data.bars} />
 
-            <h3 className="sheet-sub">📅 returns</h3>
+            <h3 className="sheet-sub" {...ex('returns')}>📅 returns</h3>
             <Returns bars={data.bars} />
 
             <div className="stat-grid">
-              <RangeBar low={data.day_low} high={data.day_high} value={data.price} label="today's range" />
-              <RangeBar low={data.week52_low} high={data.week52_high} value={data.price} label="52-week range" />
+              <RangeBar low={data.day_low} high={data.day_high} value={data.price} label="today's range" explain="day-range" />
+              <RangeBar low={data.week52_low} high={data.week52_high} value={data.price} label="52-week range" explain="52w-range" />
             </div>
 
             <dl className="stat-list">
-              <div>
+              <div {...ex('prev-close')}>
                 <dt>previous close</dt>
                 <dd>{fmtPrice(data.prev_close)}</dd>
               </div>
-              <div>
+              <div {...ex('volume')}>
                 <dt>volume</dt>
                 <dd>{fmtNum(data.volume)}</dd>
               </div>
-              <div>
+              <div {...ex('avg-volume')}>
                 <dt>avg volume (20d)</dt>
                 <dd>{fmtNum(data.avg_volume_20d)}</dd>
               </div>
-              <div>
+              <div {...ex('delivery')}>
                 <dt>delivery %</dt>
                 <dd>{data.deliv_pct != null ? `${data.deliv_pct.toFixed(1)}%` : '—'}</dd>
               </div>
-              <div>
+              <div {...ex('trades')}>
                 <dt>trades</dt>
                 <dd>{fmtNum(data.total_trades)}</dd>
               </div>
-              <div>
+              <div {...ex('52w-high')}>
                 <dt>52-week high</dt>
                 <dd>{fmtPrice(data.week52_high)}</dd>
               </div>
             </dl>
 
-            <h3 className="sheet-sub">🔮 technicals</h3>
+            <h3 className="sheet-sub" {...ex('rsi')}>🔮 technicals</h3>
             <Technicals bars={data.bars} />
             <p className="tech-note">readings describe the chart, they aren't advice to buy or sell.</p>
 
-            <h3 className="sheet-sub">🔔 recent alerts</h3>
+            <h3 className="sheet-sub" {...ex('alerts')}>🔔 recent alerts</h3>
             {data.events?.length ? (
               <ul className="mkt-list">
                 {data.events.map((e, i) => (

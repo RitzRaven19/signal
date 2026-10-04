@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react'
 import { getBoutique, getQuotes } from './api'
 import { GroovyText, MiniLoader } from './groovy'
 import { fmtPct, fmtPrice } from './market'
+import { EXPLORED_KEY, ex } from './explain'
 import { PortfolioView, buyInto, loadBook, saveBook } from './portfolio'
 
 const bare = (s) => (s || '').replace(/\.NS$/, '')
@@ -255,9 +256,19 @@ function loadProgress() {
 
 const dayKey = (d = new Date()) => d.toDateString()
 
+// Things explored in point & learn mode (one sparkle each).
+const exploredCount = () => {
+  try {
+    return (JSON.parse(localStorage.getItem(EXPLORED_KEY)) || []).length
+  } catch {
+    return 0
+  }
+}
+const CURIOUS_TARGET = 15
+
 // ── badges: earned for learning, spreading out and patience ──
 
-function badgeList(book, progress) {
+function badgeList(book, progress, explored) {
   const holdings = Object.keys(book.holdings)
   const aisles = new Set(holdings.map((s) => AISLE_OF[s] || 'other'))
   const lessonsDone = Object.keys(progress.lessons).length
@@ -277,6 +288,7 @@ function badgeList(book, progress) {
     ['🔥', '3-day streak', 'learn something 3 days in a row', progress.streak.count >= 3],
     ['👑', 'money smart', 'finish every lesson', lessonsDone >= LESSONS.length],
     ['🌍', 'world tour', 'own stocks from 5 aisles', aisles.size >= 5],
+    ['🔍', 'curious cat', `explore ${CURIOUS_TARGET} things in point & learn mode`, explored >= CURIOUS_TARGET],
   ]
 }
 
@@ -313,7 +325,9 @@ export function ShopView({ onOpen, initialPick = null }) {
   }, [tab])
 
   const bagCount = Object.values(progress.bag).reduce((a, n) => a + n, 0)
-  const badges = badgeList(book, progress)
+  const explored = exploredCount()
+  const sparkles = progress.sparkles + explored
+  const badges = badgeList(book, progress, explored)
   const earned = badges.filter((b) => b[3]).length
 
   const addToBag = (symbol) =>
@@ -327,8 +341,8 @@ export function ShopView({ onOpen, initialPick = null }) {
         </h2>
         <p className="inbox-subtitle">shop real companies with ₹10,00,000 of pretend money, and learn as you go.</p>
         <div className="shop-stats">
-          <span className="glance-pill accent">✨ {progress.sparkles} sparkles</span>
-          <span className="glance-pill accent">🔥 {progress.streak.count}-day streak</span>
+          <span className="glance-pill accent" {...ex('sparkles')}>✨ {sparkles} sparkles</span>
+          <span className="glance-pill accent" {...ex('streak')}>🔥 {progress.streak.count}-day streak</span>
           <span className="glance-pill accent">🏅 {earned}/{badges.length} badges</span>
           <span className="glance-pill muted">cash {fmtPrice(book.cash)}</span>
         </div>
@@ -414,7 +428,7 @@ function Boutique({ onOpen, onAdd, bag, lessonsDone, goLearn }) {
                         {bare(symbol)[0]}
                       </span>
                       {v && (
-                        <span className="vibe-tag" title={v.tip}>
+                        <span className="vibe-tag" title={v.tip} {...ex('vibe')}>
                           {v.tag}
                         </span>
                       )}
@@ -426,11 +440,11 @@ function Boutique({ onOpen, onAdd, bag, lessonsDone, goLearn }) {
                     <p className="product-blurb">{BLURB_OF[symbol]}</p>
                     <div className="product-price">
                       <strong>{fmtPrice(it?.close)}</strong>
-                      <span className="product-unit">per share</span>
+                      <span className="product-unit" {...ex('per-share')}>per share</span>
                     </div>
                     <div className="product-moves">
-                      <span className={`change ${dir(it?.pct)}`}>{fmtPct(it?.pct)} day</span>
-                      <span className={`change ${dir(it?.pct_1m)}`}>{fmtPct(it?.pct_1m)} 1m</span>
+                      <span className={`change ${dir(it?.pct)}`} {...ex('pct-day')}>{fmtPct(it?.pct)} day</span>
+                      <span className={`change ${dir(it?.pct_1m)}`} {...ex('pct-1m')}>{fmtPct(it?.pct_1m)} 1m</span>
                     </div>
                     <div className="product-actions">
                       <button className="product-peek" onClick={() => onOpen(symbol)}>
@@ -576,7 +590,7 @@ function Diversity({ book }) {
       <h2 className="groovy-title">
         <GroovyText text="🌈 closet mix" />
       </h2>
-      <p className="diversity-score">
+      <p className="diversity-score" {...ex('diversity')}>
         diversity: {'💗'.repeat(score)}
         {'🤍'.repeat(5 - score)} <span className="paper-sub">({aisles.length} aisle{aisles.length > 1 ? 's' : ''})</span>
       </p>

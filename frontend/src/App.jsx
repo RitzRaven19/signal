@@ -4,6 +4,7 @@ import { replyAsync, QUICK_REPLIES } from './mascotChat'
 import { MarketView, ScansView, StockSheet, SymbolSearch } from './market'
 import { FundSheet, FundsView } from './funds'
 import { ShopView } from './shop'
+import { LearnBubble, LearnToggle, ex, useLearnMode } from './explain'
 import { GroovyText } from './groovy'
 
 const POLL_MS = 15000
@@ -32,7 +33,7 @@ const EVENT_EMOJI = {
 }
 
 function StalenessBadge({ tier }) {
-  return <span className={`badge badge-${tier}`}>{STALENESS_LABEL[tier] || tier}</span>
+  return <span className={`badge badge-${tier}`} {...ex(`badge-${tier}`)}>{STALENESS_LABEL[tier] || tier}</span>
 }
 
 function formatTime(iso) {
@@ -154,13 +155,13 @@ function WatchlistRow({ row, onRemove, onOpen }) {
       </button>
       <div className="watch-row-quote">
         {row.price != null ? (
-          <span className="price">₹{row.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="price" {...ex('watch-price')}>₹{row.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         ) : (
           <span className="price price-error" title={row.error}>
             no data
           </span>
         )}
-        <span className={`change ${dir}`}>{pct ?? '—'}</span>
+        <span className={`change ${dir}`} {...ex('pct-day')}>{pct ?? '—'}</span>
       </div>
       <button className="remove-btn" onClick={() => onRemove(row.symbol)} title={`Remove ${row.symbol}`}>
         ×
@@ -211,6 +212,7 @@ function MoodCard({ watchlist, changed, mood, actions }) {
       <div className="mood-top">
         <button
           className="mood-mascot"
+          {...ex('mascot')}
           onClick={tap}
           onAnimationEnd={(e) => e.animationName === 'hop' && setHopping(false)}
           title="tap her for today's summary"
@@ -408,7 +410,7 @@ function AtAGlance({ watchlist, changed }) {
     ['changes to read', statements, statements ? 'accent' : 'muted'],
   ]
   return (
-    <section className="pane glance">
+    <section className="pane glance" {...ex('glance')}>
       <h2 className="groovy-title"><GroovyText text={'at a glance'} /></h2>
       <ul className="glance-list">
         {rows.map(([k, v, tone]) => (
@@ -509,6 +511,7 @@ export default function App() {
   const [quietLog, setQuietLog] = useState(null)
   const [inboxTab, setInboxTab] = useState('changed')
   const [view, setView] = useState('mine')
+  const [learnMode, setLearnMode] = useLearnMode()
   const [openSymbol, setOpenSymbol] = useState(null)
   const closeSheet = useCallback(() => setOpenSymbol(null), [])
   const [openFund, setOpenFund] = useState(null)
@@ -644,6 +647,7 @@ export default function App() {
           <span className="l-l">l</span>
         </div>
         <div className="header-right">
+          <LearnToggle on={learnMode} setOn={setLearnMode} />
           <div className="header-status">
             <div className="clock">
               {now.toLocaleString('en-IN', {
@@ -716,6 +720,7 @@ export default function App() {
                   key={t.key}
                   className={inboxTab === t.key ? 'lens-btn active' : 'lens-btn'}
                   onClick={() => setInboxTab(t.key)}
+                  {...ex(t.key === 'changed' ? 'since-last' : 'quiet-log')}
                 >
                   {t.label}
                   {t.key === 'changed' && changed?.statements?.length > 0 && (
@@ -792,6 +797,7 @@ export default function App() {
         />
       )}
       {openFund && <FundSheet code={openFund} onClose={closeFund} />}
+      <LearnBubble on={learnMode} />
     </div>
   )
 }

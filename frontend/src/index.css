@@ -2532,3 +2532,58 @@ body {
 .badge-card.got { opacity: 1; border-color: var(--groovy-red); background: #fff; color: var(--text); box-shadow: 3px 3px 0 var(--groovy-fill); }
 .badge-emoji { font-size: 28px; }
 .product-legal { margin: 0; font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Point & learn mode ─────────────────────────────────────────────── */
+.header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+.learn-toggle {
+  padding: 6px 13px;
+  border: 2px solid var(--groovy-fill);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--groovy-red);
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--groovy-fill);
+}
+.learn-toggle.on { background: var(--groovy-red); border-color: var(--groovy-red); color: #fff; box-shadow: 2px 2px 0 var(--groovy-deep); }
+body.learn-mode [data-explain] {
+  cursor: help;
+  outline: 2px dashed rgba(215, 38, 61, 0.35);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+body.learn-mode [data-explain]:hover { outline-color: var(--groovy-red); background-color: rgba(247, 161, 196, 0.12); }
+.learn-bubble {
+  position: fixed;
+  z-index: 200;
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 2px solid var(--groovy-red);
+  border-radius: 18px;
+  background: #fff5f9;
+  box-shadow: 4px 4px 0 var(--groovy-red), 0 12px 26px rgba(215, 38, 61, 0.18);
+  pointer-events: none;
+  animation: pop 0.15s ease-out;
+  user-select: none;
+}
+.learn-avatar {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid var(--groovy-red);
+  background: #fff url('/mascot/mascot-happy.jpg') center 22% / 150% no-repeat;
+}
+.learn-title {
+  display: block;
+  font-family: 'Shrikhand', 'Lobster', cursive;
+  font-weight: 400;
+  font-size: 15px;
+  color: var(--groovy-red);
+}
+.learn-text { margin: 2px 0 4px; font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--text); }
+.learn-count { font-size: 11px; font-weight: 700; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .learn-bubble { animation: none; } }

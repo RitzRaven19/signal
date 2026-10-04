@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { getQuotes } from './api'
 import { GroovyText } from './groovy'
 import { SymbolSearch, fmtPct, fmtPrice } from './market'
+import { ex } from './explain'
 
 const BOOK_KEY = 'signal-paper-v1'
 export const START_CASH = 1000000 // ₹10 lakh of pretend money
@@ -141,22 +142,22 @@ export function PortfolioView({ onOpen, initialPick = null }) {
         </h2>
         <p className="inbox-subtitle">trade with pretend money at the latest price. nothing real is bought or sold.</p>
         <div className="paper-summary">
-          <div>
+          <div {...ex('portfolio-value')}>
             <span>portfolio value</span>
             <strong>{fmtPrice(total)}</strong>
             <em className={`change ${dir(totalPnl)}`}>{fmtPct(totalPnl / START_CASH)} overall</em>
           </div>
-          <div>
+          <div {...ex('pnl')}>
             <span>total P&L</span>
             <strong className={totalPnl >= 0 ? 'pnl-up' : 'pnl-down'}>{(totalPnl >= 0 ? '+' : '−') + fmtPrice(Math.abs(totalPnl))}</strong>
             <em className="paper-sub">booked {(book.realized >= 0 ? '+' : '−') + fmtPrice(Math.abs(book.realized))}</em>
           </div>
-          <div>
+          <div {...ex('today-pnl')}>
             <span>today</span>
             <strong className={dayPnl >= 0 ? 'pnl-up' : 'pnl-down'}>{(dayPnl >= 0 ? '+' : '−') + fmtPrice(Math.abs(dayPnl))}</strong>
             <em className="paper-sub">on your holdings</em>
           </div>
-          <div>
+          <div {...ex('cash')}>
             <span>cash left</span>
             <strong>{fmtPrice(book.cash)}</strong>
             <em className="paper-sub">invested {fmtPrice(invested)}</em>
@@ -214,7 +215,7 @@ export function PortfolioView({ onOpen, initialPick = null }) {
               <li key={r.s} className="mkt-row" tabIndex={0} onClick={() => onOpen(r.s)} onKeyDown={(e) => e.key === 'Enter' && onOpen(r.s)}>
                 <div className="mkt-id">
                   <span className="symbol">{bare(r.s)}</span>
-                  <span className="mkt-name">
+                  <span className="mkt-name" {...ex('avg-cost')}>
                     {r.h.qty} @ {fmtPrice(r.h.cost)} · now {fmtPrice(r.p)}
                   </span>
                 </div>
