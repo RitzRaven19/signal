@@ -74,7 +74,7 @@ export function reply(input, { watchlist, changed, mood }) {
   }
 
   if (has('my stocks', 'how are', 'portfolio', 'watchlist', 'doing')) {
-    if (!watchlist.length) return 'your watchlist is empty! type a symbol like RELIANCE.NS up top and hit add.'
+    if (!watchlist.length) return "your watchlist is empty! say \"add TCS\" and i'll add it, or search under \"my watchlist\"."
     const up = watchlist.filter((r) => r.pct_change > 0).length
     const down = watchlist.filter((r) => r.pct_change < 0).length
     const best = [...watchlist].filter((r) => r.pct_change != null).sort((a, b) => b.pct_change - a.pct_change)[0]

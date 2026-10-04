@@ -477,6 +477,21 @@ def get_scan(scan: str, limit: int = 25):
     }
 
 
+MAX_QUOTES = 30
+
+
+@app.get("/api/quotes")
+def get_quotes(symbols: str = ""):
+    """Latest quotes for a comma-separated list of symbols (the practice
+    portfolio's holdings), fetched in parallel."""
+    wanted = list(dict.fromkeys(s.strip().upper() for s in symbols.split(",") if s.strip()))[:MAX_QUOTES]
+    if not wanted:
+        return {"quotes": {}}
+    with httpx.Client(timeout=15) as client, ThreadPoolExecutor(max_workers=8) as pool:
+        quotes = list(pool.map(lambda s: _index_quote(client, s, s), wanted))
+    return {"quotes": {q["symbol"]: q for q in quotes}}
+
+
 @app.get("/api/search")
 def search(q: str = ""):
     return {"q": q, "results": market.search_symbols(get_engine(), q)}

@@ -3,6 +3,7 @@ import { getWatchlist, addSymbol, removeSymbol, getChanged, getQuietLog, ackSymb
 import { replyAsync, QUICK_REPLIES } from './mascotChat'
 import { MarketView, ScansView, StockSheet, SymbolSearch } from './market'
 import { FundSheet, FundsView } from './funds'
+import { PortfolioView } from './portfolio'
 import { GroovyText } from './groovy'
 
 const POLL_MS = 15000
@@ -494,6 +495,7 @@ const VIEWS = [
   { key: 'market', label: '📈 market' },
   { key: 'scans', label: '✨ scans' },
   { key: 'funds', label: '💰 funds' },
+  { key: 'practice', label: '🎀 practice' },
 ]
 
 const INBOX_TABS = [
@@ -682,6 +684,7 @@ export default function App() {
         )}
         {view === 'scans' && <ScansView onOpen={setOpenSymbol} />}
         {view === 'funds' && <FundsView onOpen={setOpenFund} />}
+        {view === 'practice' && <PortfolioView onOpen={setOpenSymbol} />}
         {view === 'mine' && (
         <>
         <section className="pane watchlist-pane">

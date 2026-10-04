@@ -38,6 +38,9 @@ Hand-drawn SVG price chart (1m–2y, hover readout, optional 50/200-day averages
 ### 💰 Funds
 Search any Indian mutual fund and see its NAV chart (1 month to its whole history) and returns: absolute up to 1 year, CAGR for 3y/5y/since launch, the same convention AMFI factsheets use. A fund with no NAV for a week is flagged as possibly merged or closed.
 
+### 🎀 Practice portfolio
+Paper trading with ₹10,00,000 of pretend money: buy and sell any NSE stock at the latest price and track portfolio value, total and booked P&L, today's P&L, and a trade history. Guards against overspending and overselling. Nothing real is bought or sold, and the book is saved in your browser.
+
 ### The mascot chat
 She's a rule-based helper (no AI model, no paid API) who reads the same data the page shows, so she can't contradict the screen:
 - *"how's the market?"*, *"best sector today?"*, *"top losers"*, *"fear gauge"*
@@ -76,6 +79,7 @@ Not available for free, so not shown: fundamentals (P/E, results, shareholding),
 | `GET /api/search?q=` | ticker / company-name search |
 | `GET /api/stock/{symbol}` | stock page data (2y bars + NSE stats + alerts) |
 | `GET /api/funds/search?q=`, `GET /api/funds/{code}` | fund search, NAV history and returns |
+| `GET /api/quotes?symbols=` | latest quotes for up to 30 symbols (practice portfolio) |
 | `GET /api/health/sources` | data-source health |
 
 ## Setup (clean clone, Postgres already provisioned)
@@ -130,7 +134,7 @@ The bhavcopy detectors follow the same rule — judge each stock against its own
 
 ## Scope
 
-Out of scope by design: auth beyond an anonymous cookie `user_id`, portfolio/P&L tracking, charting libraries, ML, a mobile app, WebSockets, real-time multi-user collaboration, and anything that needs paid data.
+Out of scope by design: auth beyond an anonymous cookie `user_id`, real-money portfolio tracking or broker integration (the practice portfolio is pretend money only), charting libraries, ML, a mobile app, WebSockets, real-time multi-user collaboration, and anything that needs paid data.
 
 Still to do:
 - **Accuracy report** — replay six months of bhavcopy offline and label alerts against the next day's tape. Not fabricating numbers for a backtest that hasn't been run.
