@@ -2661,3 +2661,7 @@ body.learn-mode [data-explain]:hover { outline-color: var(--groovy-red); backgro
 }
 .news-item a { flex: 1 1 260px; color: var(--text); font-weight: 700; text-decoration: none; }
 .news-item a:hover { color: var(--accent); text-decoration: underline wavy var(--border); }
+
+/* real brand icons inside the logo circle */
+.product-logo.has-icon { background: #fff; overflow: hidden; padding: 0; }
+.product-logo.has-icon img { width: 74%; height: 74%; object-fit: contain; }

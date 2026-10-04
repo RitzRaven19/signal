@@ -129,6 +129,45 @@ const BRAND_OF = {
 }
 const ALL_SYMBOLS = AISLES.flatMap((a) => a.items.map(([s]) => s))
 
+// Brand icons: each company website's own icon, via Google's free favicon
+// service (no logo files stored here). Checked Oct 2026; brands whose icon
+// is missing or too small to look sharp (Dabur, IRCTC, Trent) use the letter.
+const ICON_DOMAIN = {
+  'NYKAA.NS': 'nykaa.com', 'HONASA.NS': 'mamaearth.in', 'HINDUNILVR.NS': 'hul.co.in', 'GODREJCP.NS': 'www.godrejcp.com',
+  'MARICO.NS': 'marico.com', 'TITAN.NS': 'titan.co.in', 'KALYANKJIL.NS': 'kalyanjewellers.net', 'ABFRL.NS': 'abfrl.com',
+  'PAGEIND.NS': 'jockey.in', 'METROBRAND.NS': 'metroshoes.com', 'JUBLFOOD.NS': 'dominos.co.in', 'WESTLIFE.NS': 'mcdonalds.com',
+  'DEVYANI.NS': 'online.kfc.co.in', 'TATACONSUM.NS': 'tataconsumer.com', 'NESTLEIND.NS': 'nestle.in', 'ETERNAL.NS': 'zomato.com',
+  'SWIGGY.NS': 'swiggy.com', 'BHARTIARTL.NS': 'airtel.in', 'DIXON.NS': 'dixoninfo.com', 'INFY.NS': 'infosys.com',
+  'TCS.NS': 'www.tcs.com', 'INDIGO.NS': 'goindigo.in', 'INDHOTEL.NS': 'tajhotels.com', 'PVRINOX.NS': 'pvrcinemas.com',
+  'HDFCBANK.NS': 'hdfcbank.com', 'ICICIBANK.NS': 'icicibank.com', 'SBIN.NS': 'onlinesbi.sbi', 'BAJFINANCE.NS': 'bajajfinserv.in',
+}
+const MIN_ICON_PX = 32
+
+function BrandLogo({ symbol, small = false }) {
+  const [failed, setFailed] = useState(false)
+  const domain = ICON_DOMAIN[symbol]
+  const cls = small ? 'product-logo small' : 'product-logo'
+  if (!domain || failed) {
+    return (
+      <span className={cls} aria-hidden="true">
+        {bare(symbol)[0]}
+      </span>
+    )
+  }
+  return (
+    <span className={`${cls} has-icon`} aria-hidden="true">
+      <img
+        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=128`}
+        alt=""
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+        onLoad={(e) => e.currentTarget.naturalWidth < MIN_ICON_PX && setFailed(true)}
+      />
+    </span>
+  )
+}
+
 // How much the price has swung day to day (stdev of daily returns).
 function vibe(dailyVol) {
   if (dailyVol == null) return null
@@ -424,9 +463,7 @@ function Boutique({ onOpen, onAdd, bag, lessonsDone, goLearn }) {
                 return (
                   <article key={symbol} className="product-card">
                     <div className="product-top">
-                      <span className="product-logo" aria-hidden="true">
-                        {bare(symbol)[0]}
-                      </span>
+                      <BrandLogo symbol={symbol} />
                       {v && (
                         <span className="vibe-tag" title={v.tip} {...ex('vibe')}>
                           {v.tag}
@@ -536,9 +573,7 @@ function Bag({ progress, setProgress, book, onCheckout, goShop, goCloset }) {
           <ul className="mkt-list">
             {lines.map((l) => (
               <li key={l.s} className="bag-line">
-                <span className="product-logo small" aria-hidden="true">
-                  {bare(l.s)[0]}
-                </span>
+                <BrandLogo symbol={l.s} small />
                 <div className="mkt-id">
                   <span className="symbol">{BRAND_OF[l.s] || bare(l.s)}</span>
                   <span className="mkt-name">{bare(l.s)} · {BLURB_OF[l.s] || ''}</span>

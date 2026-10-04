@@ -49,7 +49,7 @@ Search any Indian mutual fund and see its NAV chart (1 month to its whole histor
 
 ### 🛍️ The stock shop: learn by "shopping"
 A beginner-friendly way in, inspired by learn-to-invest apps for women like Female Invest's Playvest simulator:
-- **Boutique:** 31 real NSE companies behind everyday brands (Nykaa, Mamaearth, Zudio, Tanishq, Domino's, Zomato, Airtel, IndiGo, HDFC Bank…) in aisles like beauty, fashion and food. Each card shows the brand, what the company does, the last price, day and 1-month change, and a **vibe tag** (steady 🧸 / bouncy 🎈 / spicy 🌶️) computed from recent daily volatility.
+- **Boutique:** 31 real NSE companies behind everyday brands (Nykaa, Mamaearth, Zudio, Tanishq, Domino's, Zomato, Airtel, IndiGo, HDFC Bank…) in aisles like beauty, fashion and food. Each card shows the brand with its own icon (the company website's, via Google's free favicon service), what the company does, the last price, day and 1-month change, and a **vibe tag** (steady 🧸 / bouncy 🎈 / spicy 🌶️) computed from recent daily volatility.
 - **Bag & checkout** with ₹10,00,000 of pretend money at the latest price; **my closet** is the practice portfolio (P&L, holdings, trade history) plus a **diversity score** by aisle.
 - **Learn:** 8 one-minute lessons with a quiz each (what a share is, why prices move, diversification, volatility, SEBI's finding that ~7 in 10 individual intraday traders lost money, indices, SIPs, spotting scams).
 - **Sparkles, a learning streak and 9 badges**, earned for learning, diversifying and holding.
