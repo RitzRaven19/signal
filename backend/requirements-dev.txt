@@ -1,2 +1,3 @@
--r requirements.txt
+# Tests cover the bhavcopy code too, so they need the NSE client as well.
+-r requirements-ingest.txt
 pytest==8.4.2
