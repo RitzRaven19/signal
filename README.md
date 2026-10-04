@@ -1,5 +1,7 @@
 # Signal
 
+[![Tests](https://github.com/RitzRaven19/signal/actions/workflows/tests.yml/badge.svg)](https://github.com/RitzRaven19/signal/actions/workflows/tests.yml)
+
 **Groww CODE 2026 — Smart Market Watchlist**
 
 A watchlist should tell you what changed *for the company*, not what changed on the screen. Signal strips out index-driven co-movement and alerts only on the unexplained residual — so on a day the whole market drops 2%, a stock that dropped 2% alongside it stays quiet, and the one that broke rank gets flagged.
@@ -153,14 +155,25 @@ The bhavcopy detectors follow the same rule — judge each stock against its own
 Out of scope by design: auth beyond an anonymous cookie `user_id`, real-money portfolio tracking or broker integration (the practice portfolio is pretend money only), charting libraries, ML, a mobile app, WebSockets, real-time multi-user collaboration, and anything that needs paid data.
 
 Still to do:
-- **Accuracy report** — replay six months of bhavcopy offline and label alerts against the next day's tape. Not fabricating numbers for a backtest that hasn't been run.
+- **A stronger accuracy test** — a longer history and labels from NSE corporate announcements (see the accuracy report below for the current, honest numbers).
 - **Replay mode**, and **announcements / surveillance flags** from NSE.
 
 ## Accuracy report
 
-Not yet populated, for the reason above — no placeholder numbers on principle.
+Measured with `python backend/backtest.py`, which replays both detectors over the stored NSE bhavcopy history (read-only).
 
-| Detector | Alerts fired | Precision | Alerts / user / day |
-|---|---|---|---|
-| Naive (±2% price) | — | — | — |
-| Residual (this build) | — | — | — |
+- **Universe:** the 100 most-traded NSE stocks, 12 Jun to 1 Oct 2026. That's 3,968 stock-days, including 9 market-wide days where NIFTY moved ≥1%.
+- **Out of sample:** each day's beta and residual σ are fitted only on earlier sessions, using the same `fit_beta` / `detect_residual_move` code as the app.
+- **Label:** an alert counts as a *hit* if the next day's volume is ≥1.5× the stock's median volume over the prior 20 sessions. Both detectors look at price; the label looks at next-day volume, so neither detector is handed the answer. Base rate: 21.9% of all stock-days.
+
+| Detector | Alerts fired | Precision (next-day volume follow-through) | Lift vs base rate | Alerts / user / day (20 stocks) | Share fired on market-wide days |
+|---|---|---|---|---|---|
+| Naive (±2% price) | 965 | 34.3% | 1.56x | 4.86 | 20% |
+| Naive, same alert count (±3.7%) | 310 | 44.5% | 2.03x | 1.56 | 22% |
+| Residual (this build) | 310 | 45.2% | 2.06x | 1.56 | 17% |
+
+**What this does and doesn't show:**
+- **Against the ±2% rule, the residual detector fires 3× fewer alerts (1.6 vs 4.9 per user per day) with higher precision (45% vs 34%).** That's the noise reduction the project set out to deliver.
+- **But at the *same* alert count, it's no better than simply alerting on the biggest raw moves.** 45.2% vs 44.5% is within noise: with ~310 alerts each, the standard error is about ±3 points. On this data, most of the gain comes from alerting less, not from choosing better alerts.
+- **It does fire less on market-wide days** (17% of its alerts vs 22%), which is exactly the case it was designed for. But this period had only 9 such days, so that evidence is thin.
+- **Limitations:** 3.5 months of data; a volume-based proxy instead of labelled news or announcements; no transaction-level or intraday data. The next step is a longer history with more market-wide days, and a label from NSE corporate announcements.
