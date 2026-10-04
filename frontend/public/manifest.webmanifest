@@ -1,0 +1,15 @@
+{
+  "name": "Signal: your cute stock market bestie",
+  "short_name": "Signal",
+  "description": "A beginner-friendly Indian stock market companion: what changed, market overview, a learn-by-shopping practice portfolio and an AI that explains anything you point at.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fffafc",
+  "theme_color": "#f7a1c4",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

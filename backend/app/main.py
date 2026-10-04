@@ -8,6 +8,7 @@ yet, so staleness reflects Yahoo's own as_of, not a cache.
 
 from __future__ import annotations
 
+import mimetypes
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date as date_type, datetime, timedelta, timezone
@@ -652,4 +653,6 @@ def health_sources():
 # Missing during backend-only dev; harmless, just nothing at "/" until built.
 FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 if FRONTEND_DIST.is_dir():
+    # Browsers want the app manifest served as such for "install app".
+    mimetypes.add_type("application/manifest+json", ".webmanifest")
     app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")

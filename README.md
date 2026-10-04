@@ -71,6 +71,10 @@ She's a rule-based helper (no AI model, no paid API) who reads the same data the
 - Tickers she names are tappable, follow-up chips adapt to what you asked, and history is kept in your browser.
 - She refuses buy/sell advice, every time.
 
+### 📲 Installable, with a welcome tour
+- **Install it like an app:** "Add to Home screen" gives Signal its own icon (the mascot) and opens it full-screen. There's an **install app** button in Chrome, Edge and Android, and a how-to for iPhones. A small service worker caches only the app's static files: prices and alerts always come fresh from the server.
+- **Welcome tour:** first-time visitors get a 5-step tour guided by the mascot (the tabs, point & learn, the shop, the chat). It runs once, and **❓** in the header replays it.
+
 ## Data sources (all free)
 
 | What | Source |

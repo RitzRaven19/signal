@@ -112,7 +112,7 @@ export function useLearnMode() {
 
 export function LearnToggle({ on, setOn }) {
   return (
-    <button className={on ? 'learn-toggle on' : 'learn-toggle'} onClick={() => setOn((v) => !v)} aria-pressed={on}>
+    <button className={on ? 'learn-toggle point-learn on' : 'learn-toggle point-learn'} onClick={() => setOn((v) => !v)} aria-pressed={on}>
       {on ? '🔍 point & learn: on' : '🔍 point & learn'}
     </button>
   )

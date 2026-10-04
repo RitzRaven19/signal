@@ -4,6 +4,7 @@ import { replyAsync, QUICK_REPLIES } from './mascotChat'
 import { MarketView, ScansView, StockSheet, SymbolSearch } from './market'
 import { FundSheet, FundsView } from './funds'
 import { ShopView } from './shop'
+import { InstallButton, Tour, useTour } from './tour'
 import { LearnBubble, LearnToggle, ex, useLearnMode } from './explain'
 import { GroovyText } from './groovy'
 
@@ -525,6 +526,7 @@ export default function App() {
   const [error, setError] = useState(null)
   const [now, setNow] = useState(() => new Date())
   const [loaded, setLoaded] = useState(false)
+  const tour = useTour(loaded)
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 30000)
@@ -647,6 +649,10 @@ export default function App() {
           <span className="l-l">l</span>
         </div>
         <div className="header-right">
+          <InstallButton />
+          <button className="learn-toggle tour-btn" onClick={tour.start} title="take the tour again" aria-label="take the tour again">
+            ❓
+          </button>
           <LearnToggle on={learnMode} setOn={setLearnMode} />
           <div className="header-status">
             <div className="clock">
@@ -798,6 +804,7 @@ export default function App() {
       )}
       {openFund && <FundSheet code={openFund} onClose={closeFund} />}
       <LearnBubble on={learnMode} />
+      <Tour step={tour.step} setStep={tour.setStep} finish={tour.finish} />
     </div>
   )
 }

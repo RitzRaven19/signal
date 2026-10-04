@@ -2694,3 +2694,74 @@ body.learn-mode [data-explain]:hover { outline-color: var(--groovy-red); backgro
 }
 .chat-time,
 .chat-link { -webkit-user-select: none; user-select: none; }
+
+/* ── Welcome tour + install button ──────────────────────────────────── */
+.tour-btn { padding: 6px 10px; }
+.install-btn { background: var(--groovy-red); border-color: var(--groovy-red); color: #fff; box-shadow: 2px 2px 0 var(--groovy-deep); }
+.ios-help {
+  position: absolute;
+  z-index: 60;
+  top: 64px;
+  right: 16px;
+  max-width: 260px;
+  padding: 10px 12px;
+  border: 2px solid var(--groovy-red);
+  border-radius: 14px;
+  background: #fff5f9;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  box-shadow: 3px 3px 0 var(--groovy-fill);
+}
+.app-header { position: relative; }
+.tour-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(110, 34, 68, 0.18);
+  pointer-events: auto;
+}
+.tour-card {
+  display: flex;
+  gap: 12px;
+  width: min(460px, 100%);
+  margin-bottom: 4vh;
+  padding: 14px 16px;
+  border: 2px solid var(--groovy-red);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 5px 5px 0 var(--groovy-red), 0 18px 40px rgba(215, 38, 61, 0.25);
+  animation: sheet-in 0.2s ease-out;
+}
+.tour-avatar { width: 52px; height: 52px; }
+.tour-body { flex: 1; min-width: 0; }
+.tour-body .learn-title { font-size: 18px; }
+.tour-body .learn-text { font-size: 14px; }
+.tour-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.tour-dots { display: flex; gap: 4px; margin-right: auto; }
+.tour-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--border); }
+.tour-dots i.on { background: var(--groovy-red); }
+.tour-skip,
+.tour-back {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 800;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+/* the element the tour is pointing at sits above the dimmed page */
+.tour-target {
+  position: relative;
+  z-index: 301 !important;
+  outline: 3px dashed var(--groovy-red) !important;
+  outline-offset: 4px;
+  border-radius: 14px;
+  background-color: #fff;
+}
+@media (prefers-reduced-motion: reduce) { .tour-card { animation: none; } }
