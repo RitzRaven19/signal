@@ -2665,3 +2665,32 @@ body.learn-mode [data-explain]:hover { outline-color: var(--groovy-red); backgro
 /* real brand icons inside the logo circle */
 .product-logo.has-icon { background: #fff; overflow: hidden; padding: 0; }
 .product-logo.has-icon img { width: 74%; height: 74%; object-fit: contain; }
+
+/* App-like selection, site-wide: tapping or double-clicking buttons, cards,
+   tabs and headings no longer paints them in browser-blue. Text people read
+   or copy stays selectable. (Replaces the mascot-card-only rule above.) */
+.app,
+.loading-screen {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.app img { -webkit-user-drag: none; }
+.app input,
+.app textarea,
+.chat-msg,
+.lesson-text,
+.quiz-q,
+.news-item a,
+.why-answer p,
+.learn-text,
+.event-reason,
+.event-text,
+.notice-body,
+.evidence,
+.tech-read {
+  -webkit-user-select: text;
+  user-select: text;
+}
+.chat-time,
+.chat-link { -webkit-user-select: none; user-select: none; }
