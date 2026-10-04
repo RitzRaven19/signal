@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getMarket, getScan, getStock, searchSymbols } from './api'
 import { StockNews, UnusualMoves } from './incidents'
+import { SkeletonMarket, SkeletonRows } from './skeleton'
 import { ex } from './explain'
 import { GroovyText, MiniLoader } from './groovy'
 
@@ -212,7 +213,7 @@ export function MarketView({ onOpen }) {
   }, [])
 
   if (error) return <div className="error-banner">{error}</div>
-  if (!data) return <MiniLoader text="fetching the market…" />
+  if (!data) return <SkeletonMarket />
 
   const lists = [
     ['gainers', '🚀 top gainers'],
@@ -315,7 +316,7 @@ export function ScansView({ onOpen }) {
       <p className="inbox-subtitle">{SCAN_WHY[scan]}</p>
       {error && <div className="error-banner">{error}</div>}
       {!data ? (
-        <MiniLoader text="scanning ~2,600 companies…" />
+        <SkeletonRows count={8} />
       ) : data.results.length === 0 ? (
         <div className="notice-card">
           <p className="notice-headline">🌸 nothing matched today</p>

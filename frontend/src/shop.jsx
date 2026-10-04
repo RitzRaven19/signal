@@ -12,7 +12,8 @@
 //     swung, not whether to buy
 import { useEffect, useState } from 'react'
 import { getBoutique, getQuotes } from './api'
-import { GroovyText, MiniLoader } from './groovy'
+import { GroovyText } from './groovy'
+import { SkeletonCards } from './skeleton'
 import { fmtPct, fmtPrice } from './market'
 import { EXPLORED_KEY, ex } from './explain'
 import { PortfolioView, buyInto, loadBook, saveBook } from './portfolio'
@@ -452,7 +453,7 @@ function Boutique({ onOpen, onAdd, bag, lessonsDone, goLearn }) {
       )}
       {error && <div className="error-banner">{error}</div>}
       {!data && !error ? (
-        <MiniLoader text="opening the boutique…" />
+        <SkeletonCards count={6} />
       ) : (
         data && (
           <>

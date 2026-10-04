@@ -6,6 +6,7 @@ import { getMarket, getUnusual } from './api'
 import { ex } from './explain'
 import { GroovyText } from './groovy'
 import { BRAND_OF, BrandLogo } from './shop'
+import { SkeletonTiles } from './skeleton'
 
 const STARTERS = ['NYKAA.NS', 'ETERNAL.NS', 'TITAN.NS', 'TCS.NS', 'HDFCBANK.NS', 'JUBLFOOD.NS']
 const bare = (s) => (s || '').replace(/\.NS$/, '')
@@ -85,7 +86,7 @@ export function TodaySnapshot({ onOpen, onMore }) {
         </button>
       </div>
       {m === null ? (
-        <p className="empty">peeking at the market…</p>
+        <SkeletonTiles count={4} />
       ) : m === false ? (
         <p className="empty">i couldn&apos;t reach the market data just now. try the 📈 market tab in a bit.</p>
       ) : (

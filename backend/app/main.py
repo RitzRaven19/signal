@@ -9,6 +9,8 @@ yet, so staleness reflects Yahoo's own as_of, not a cache.
 from __future__ import annotations
 
 import mimetypes
+import threading
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date as date_type, datetime, timedelta, timezone
@@ -423,6 +425,7 @@ INDEX_CACHE_SECONDS = 60
 # quotes (seen Oct 2026) -- keep them longer so evening visits are fast.
 INDEX_CACHE_CLOSED_SECONDS = 900
 _index_cache: dict = {"at": None, "data": None}
+_index_refreshing = threading.Event()
 
 
 def _index_quote(client: httpx.Client, symbol: str, label: str) -> dict:
@@ -437,20 +440,60 @@ def _index_quote(client: httpx.Client, symbol: str, label: str) -> dict:
     }
 
 
+def _fetch_index_quotes() -> tuple[list, list]:
+    wanted = INDICES + SECTORS
+    with httpx.Client(timeout=15) as client, ThreadPoolExecutor(max_workers=8) as pool:
+        quotes = list(pool.map(lambda pair: _index_quote(client, *pair), wanted))
+    return quotes[: len(INDICES)], quotes[len(INDICES):]
+
+
+def _refresh_index_cache() -> None:
+    try:
+        data = _fetch_index_quotes()
+        _index_cache.update(at=datetime.now(timezone.utc), data=data)
+    finally:
+        _index_refreshing.clear()
+
+
 def _index_quotes() -> tuple[list, list]:
     """Headline indices and sector indices, fetched in parallel and cached
-    for a minute -- 18 Yahoo calls one after another took ~10s, and every
-    visitor re-fetching them would just get us rate-limited."""
+    (a minute while NSE is open, 15 while it's shut). Once there's a cached
+    copy, an expired one is served immediately and refreshed in the
+    background -- Yahoo can take 5-15s, and no visitor should wait for it.
+    Only the very first request after a restart fetches inline."""
     now = datetime.now(timezone.utc)
     ttl = INDEX_CACHE_SECONDS if nse_is_open(now) else INDEX_CACHE_CLOSED_SECONDS
     if _index_cache["at"] and now - _index_cache["at"] < timedelta(seconds=ttl):
         return _index_cache["data"]
-    wanted = INDICES + SECTORS
-    with httpx.Client(timeout=15) as client, ThreadPoolExecutor(max_workers=8) as pool:
-        quotes = list(pool.map(lambda pair: _index_quote(client, *pair), wanted))
-    data = (quotes[: len(INDICES)], quotes[len(INDICES):])
+    if _index_cache["data"] is not None:
+        if not _index_refreshing.is_set():
+            _index_refreshing.set()
+            threading.Thread(target=_refresh_index_cache, daemon=True).start()
+        return _index_cache["data"]
+    data = _fetch_index_quotes()
     _index_cache.update(at=now, data=data)
     return data
+
+
+# End-of-day data (movers, breadth, scans) only changes when the evening
+# bhavcopy lands, so these queries are kept for 10 minutes.
+DB_CACHE_SECONDS = 600
+_db_cache: dict = {}
+
+
+def _cached(key, fn):
+    hit = _db_cache.get(key)
+    if hit and time.monotonic() - hit[0] < DB_CACHE_SECONDS:
+        return hit[1]
+    value = fn()
+    _db_cache[key] = (time.monotonic(), value)
+    return value
+
+
+@app.get("/api/ping")
+def ping():
+    """Cheap liveness check for the keep-awake job: no database, no Yahoo."""
+    return {"ok": True}
 
 
 @app.get("/api/market")
@@ -460,11 +503,11 @@ def get_market():
     engine = get_engine()
     indices, sectors = _index_quotes()
     return {
-        "as_of_date": market.latest_date(engine),
+        "as_of_date": _cached("latest", lambda: market.latest_date(engine)),
         "indices": indices,
         "sectors": sectors,
-        "breadth": market.breadth(engine),
-        "movers": {s: market.run_scan(engine, s, limit=5) for s in ("gainers", "losers", "most_active")},
+        "breadth": _cached("breadth", lambda: market.breadth(engine)),
+        "movers": _cached("movers", lambda: {s: market.run_scan(engine, s, limit=5) for s in ("gainers", "losers", "most_active")}),
         "scans": market.SCANS,
     }
 
@@ -477,8 +520,8 @@ def get_scan(scan: str, limit: int = 25):
     return {
         "scan": scan,
         "title": market.SCANS[scan],
-        "as_of_date": market.latest_date(engine),
-        "results": market.run_scan(engine, scan, limit=min(max(limit, 1), 50)),
+        "as_of_date": _cached("latest", lambda: market.latest_date(engine)),
+        "results": _cached(("scan", scan, min(max(limit, 1), 50)), lambda: market.run_scan(engine, scan, limit=min(max(limit, 1), 50))),
     }
 
 

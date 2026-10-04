@@ -164,6 +164,8 @@ The bhavcopy detectors follow the same rule — judge each stock against its own
 - **ETFs crowding the scans** → scans join NSE's equity list and keep companies only.
 - **Penny stocks dominating gainers/losers** → liquidity floor of ₹20 price and ₹1 Cr traded.
 - **Free-tier Supabase pauses after inactivity** → the daily ingest keeps it active.
+- **Render's free tier sleeps after 15 idle minutes (30-60s wake-up)** → a GitHub Actions job pings `/api/ping` every 14 minutes (`keep-awake.yml`), within Render's 750 free hours a month.
+- **Yahoo can take 5-15s for the 18 index quotes** → once cached, an expired copy is served instantly and refreshed in the background; end-of-day queries (movers, breadth, scans) are cached for 10 minutes; pages show placeholder cards while loading.
 - **New Supabase tables are world-readable via the anon key by default** → RLS on every table; the backend connects directly via `DATABASE_URL`.
 - **A short history would crash the volatility calculation** → length checked before computing returns.
 
