@@ -94,7 +94,7 @@ export const AISLES = [
 const AISLE_OF = Object.fromEntries(AISLES.flatMap((a) => a.items.map(([s]) => [s, a.key])))
 const BLURB_OF = Object.fromEntries(AISLES.flatMap((a) => a.items))
 // The brand people know, shown on the card; the legal name sits underneath.
-const BRAND_OF = {
+export const BRAND_OF = {
   'NYKAA.NS': 'Nykaa',
   'HONASA.NS': 'Mamaearth',
   'HINDUNILVR.NS': 'Hindustan Unilever',
@@ -143,7 +143,7 @@ const ICON_DOMAIN = {
 }
 const MIN_ICON_PX = 32
 
-function BrandLogo({ symbol, small = false }) {
+export function BrandLogo({ symbol, small = false }) {
   const [failed, setFailed] = useState(false)
   const domain = ICON_DOMAIN[symbol]
   const cls = small ? 'product-logo small' : 'product-logo'
@@ -341,8 +341,8 @@ const SUBTABS = [
   ['badges', '🏅 badges'],
 ]
 
-export function ShopView({ onOpen, initialPick = null }) {
-  const [tab, setTab] = useState(initialPick ? 'closet' : 'boutique')
+export function ShopView({ onOpen, initialPick = null, initialTab = 'boutique' }) {
+  const [tab, setTab] = useState(initialPick ? 'closet' : initialTab)
   const [progress, setProgress] = useState(loadProgress)
   const [book, setBook] = useState(loadBook)
 

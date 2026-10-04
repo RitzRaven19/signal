@@ -5,6 +5,7 @@ import { MarketView, ScansView, StockSheet, SymbolSearch } from './market'
 import { FundSheet, FundsView } from './funds'
 import { ShopView } from './shop'
 import { InstallButton, Tour, useTour } from './tour'
+import { StartHere, StarterStocks, TodaySnapshot } from './home'
 import { LearnBubble, LearnToggle, ex, useLearnMode } from './explain'
 import { GroovyText } from './groovy'
 
@@ -518,6 +519,17 @@ export default function App() {
   const [openFund, setOpenFund] = useState(null)
   const closeFund = useCallback(() => setOpenFund(null), [])
   const [practicePick, setPracticePick] = useState(null)
+  const [shopTab, setShopTab] = useState('boutique')
+  // "start here" card on the home page
+  const goStart = (what) => {
+    if (what === 'point') {
+      setLearnMode(true)
+      return
+    }
+    setPracticePick(null)
+    setShopTab(what === 'learn' ? 'learn' : 'boutique')
+    setView('practice')
+  }
   const practiceTrade = (symbol) => {
     setPracticePick(symbol)
     setOpenSymbol(null)
@@ -685,7 +697,11 @@ export default function App() {
       <main className="layout">
         <aside className="col-side">
           <MoodCard watchlist={watchlist} changed={changed} mood={mood} actions={chatActions} />
-          <AtAGlance watchlist={watchlist} changed={changed} />
+          {watchlist.length > 0 ? (
+            <AtAGlance watchlist={watchlist} changed={changed} />
+          ) : (
+            <StartHere go={goStart} learnMode={learnMode} />
+          )}
         </aside>
 
         <div className="col-main">
@@ -700,14 +716,14 @@ export default function App() {
         )}
         {view === 'scans' && <ScansView onOpen={setOpenSymbol} />}
         {view === 'funds' && <FundsView onOpen={setOpenFund} />}
-        {view === 'practice' && <ShopView onOpen={setOpenSymbol} initialPick={practicePick} />}
+        {view === 'practice' && <ShopView onOpen={setOpenSymbol} initialPick={practicePick} initialTab={shopTab} />}
         {view === 'mine' && (
         <>
         <section className="pane watchlist-pane">
           <h2 className="groovy-title"><GroovyText text={'🐾 my watchlist'} /></h2>
           <SymbolSearch onPick={handleAdd} placeholder="add a stock by name or ticker... 🔍" />
           {watchlist.length === 0 ? (
-            <p className="empty">no symbols yet -- add one above! 🎀</p>
+            <StarterStocks onAdd={handleAdd} />
           ) : (
             <ul className="watch-list">
               {watchlist.map((row) => (
@@ -717,6 +733,12 @@ export default function App() {
           )}
         </section>
 
+        {watchlist.length === 0 && (
+          <>
+            <TodaySnapshot onOpen={setOpenSymbol} onMore={() => setView('market')} />
+          </>
+        )}
+        {watchlist.length > 0 && (
         <section className="pane inbox-pane">
           <div className="inbox-header">
             <h2 className="groovy-title"><GroovyText text={'💌 since you last peeked'} /></h2>
@@ -789,6 +811,7 @@ export default function App() {
             </>
           )}
         </section>
+        )}
         </>
         )}
         </div>

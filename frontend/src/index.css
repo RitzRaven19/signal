@@ -2765,3 +2765,65 @@ body.learn-mode [data-explain]:hover { outline-color: var(--groovy-red); backgro
   background-color: #fff;
 }
 @media (prefers-reduced-motion: reduce) { .tour-card { animation: none; } }
+
+/* ── Home for new visitors: starter stocks, snapshot, start here ──── */
+.starters { margin-top: 2px; }
+.starters-label { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.starter-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.starter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 5px;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text);
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(233, 30, 140, 0.12);
+  transition: transform 0.12s, border-color 0.12s;
+}
+.starter-chip:hover { transform: translateY(-2px); border-color: var(--groovy-red); }
+.starter-chip em { font-style: normal; color: var(--groovy-red); font-size: 16px; }
+
+.snap-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.snap-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 2px solid var(--border-soft);
+  border-radius: 16px;
+  background: var(--panel-soft);
+}
+.snap-tile strong { font-size: 20px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.snap-tile .snap-mood { font-size: 15px; }
+.snap-sub { font-size: 12px; font-weight: 700; color: var(--muted); }
+.snap-sectors { margin: 12px 0 0; font-size: 13px; font-weight: 600; color: var(--text); }
+.snap-sectors b { font-weight: 800; }
+
+.start-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.start-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 14px;
+  border: 2px solid var(--border);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #fff 0%, var(--panel-soft) 100%);
+  color: var(--text);
+  font-family: 'Baloo 2', sans-serif;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgba(233, 30, 140, 0.12);
+  transition: transform 0.12s, border-color 0.12s;
+}
+.start-card:hover { transform: translateY(-3px); border-color: var(--groovy-red); }
+.start-emoji { font-size: 26px; }
+.start-card strong { font-size: 15px; font-weight: 800; }
+.start-card span:last-child { font-size: 12.5px; font-weight: 600; color: var(--muted); }
