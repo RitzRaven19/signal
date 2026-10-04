@@ -214,3 +214,41 @@ def stock_stats(engine: Engine, symbol: str) -> dict:
             for e in events
         ],
     }
+
+
+_BOUTIQUE_SQL = text(
+    """
+    with recent as (
+        select symbol, d, close,
+               row_number() over (partition by symbol order by d desc) rn,
+               lag(close) over (partition by symbol order by d) prev
+        from daily_bars where symbol = any(:symbols)
+    )
+    select r.symbol, i.name,
+           max(close) filter (where rn = 1) as close,
+           max(close / prev - 1) filter (where rn = 1) as pct,
+           max(close) filter (where rn = 22) as close_1m,
+           stddev_samp(ln(close / prev)) filter (where rn <= 60 and prev > 0) as daily_vol
+    from recent r join instruments i on i.symbol = r.symbol
+    group by r.symbol, i.name
+    """
+)
+
+
+def boutique(engine: Engine, symbols: list[str]) -> dict:
+    """Shop-card data for a curated list: last close, change on the day,
+    one-month change and daily volatility (stdev of log returns over up to
+    60 sessions), all from the ingested bhavcopy -- one query, no Yahoo."""
+    with engine.connect() as conn:
+        rows = conn.execute(_BOUTIQUE_SQL, {"symbols": symbols}).mappings().all()
+    out = {}
+    for r in rows:
+        close, close_1m = r["close"], r["close_1m"]
+        out[r["symbol"]] = {
+            "name": r["name"],
+            "close": float(close) if close is not None else None,
+            "pct": float(r["pct"]) if r["pct"] is not None else None,
+            "pct_1m": float(close / close_1m - 1) if close and close_1m else None,
+            "daily_vol": float(r["daily_vol"]) if r["daily_vol"] is not None else None,
+        }
+    return out

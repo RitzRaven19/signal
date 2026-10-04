@@ -8,7 +8,7 @@ import { GroovyText } from './groovy'
 import { SymbolSearch, fmtPct, fmtPrice } from './market'
 
 const BOOK_KEY = 'signal-paper-v1'
-const START_CASH = 1000000 // ₹10 lakh of pretend money
+export const START_CASH = 1000000 // ₹10 lakh of pretend money
 const QUOTE_REFRESH_MS = 60000
 const TRADES_SHOWN = 20
 
@@ -16,7 +16,7 @@ const bare = (s) => (s || '').replace(/\.NS$/, '')
 const dir = (p) => (p == null ? 'flat' : p >= 0 ? 'up' : 'down')
 const freshBook = () => ({ cash: START_CASH, realized: 0, holdings: {}, trades: [] })
 
-function loadBook() {
+export function loadBook() {
   try {
     const saved = JSON.parse(localStorage.getItem(BOOK_KEY))
     if (saved && typeof saved.cash === 'number' && saved.holdings) return saved
@@ -259,4 +259,24 @@ export function PortfolioView({ onOpen, initialPick = null }) {
       </section>
     </>
   )
+}
+
+export function saveBook(book) {
+  try {
+    localStorage.setItem(BOOK_KEY, JSON.stringify(book))
+  } catch {
+    // storage blocked -- nothing to do
+  }
+}
+
+// Apply a buy to a book (used by the shop's checkout). Returns the new book.
+export function buyInto(book, symbol, qty, price) {
+  const h = book.holdings[symbol] || { qty: 0, cost: 0 }
+  const newQty = h.qty + qty
+  return {
+    ...book,
+    cash: book.cash - qty * price,
+    holdings: { ...book.holdings, [symbol]: { qty: newQty, cost: (h.qty * h.cost + qty * price) / newQty } },
+    trades: [{ at: new Date().toISOString(), symbol, side: 'buy', qty, price }, ...book.trades].slice(0, 200),
+  }
 }

@@ -492,6 +492,12 @@ def get_quotes(symbols: str = ""):
     return {"quotes": {q["symbol"]: q for q in quotes}}
 
 
+@app.get("/api/boutique")
+def get_boutique(symbols: str = ""):
+    wanted = list(dict.fromkeys(s.strip().upper() for s in symbols.split(",") if s.strip()))[:60]
+    return {"as_of_date": market.latest_date(get_engine()), "items": market.boutique(get_engine(), wanted) if wanted else {}}
+
+
 @app.get("/api/search")
 def search(q: str = ""):
     return {"q": q, "results": market.search_symbols(get_engine(), q)}

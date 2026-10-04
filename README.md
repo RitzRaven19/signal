@@ -38,8 +38,15 @@ Hand-drawn SVG price chart (1m–2y, hover readout, optional 50/200-day averages
 ### 💰 Funds
 Search any Indian mutual fund and see its NAV chart (1 month to its whole history) and returns: absolute up to 1 year, CAGR for 3y/5y/since launch, the same convention AMFI factsheets use. A fund with no NAV for a week is flagged as possibly merged or closed.
 
-### 🎀 Practice portfolio
-Paper trading with ₹10,00,000 of pretend money: buy and sell any NSE stock at the latest price and track portfolio value, total and booked P&L, today's P&L, and a trade history. Guards against overspending and overselling. Nothing real is bought or sold, and the book is saved in your browser. Every stock page has a **practice trade** button, plus **trade for real on Groww / Zerodha** links that open the stock in your own broker. Signal never places real orders itself: it has no login, so holding broker keys on a public site would let anyone trade with your money.
+### 🛍️ The stock shop: learn by "shopping"
+A beginner-friendly way in, inspired by learn-to-invest apps for women like Female Invest's Playvest simulator:
+- **Boutique:** 31 real NSE companies behind everyday brands (Nykaa, Mamaearth, Zudio, Tanishq, Domino's, Zomato, Airtel, IndiGo, HDFC Bank…) in aisles like beauty, fashion and food. Each card shows the brand, what the company does, the last price, day and 1-month change, and a **vibe tag** (steady 🧸 / bouncy 🎈 / spicy 🌶️) computed from recent daily volatility.
+- **Bag & checkout** with ₹10,00,000 of pretend money at the latest price; **my closet** is the practice portfolio (P&L, holdings, trade history) plus a **diversity score** by aisle.
+- **Learn:** 8 one-minute lessons with a quiz each (what a share is, why prices move, diversification, volatility, SEBI's finding that ~7 in 10 individual intraday traders lost money, indices, SIPs, spotting scams).
+- **Sparkles, a learning streak and 9 badges**, earned for learning, diversifying and holding.
+- **Practice trade** and **trade for real on Groww / Zerodha** buttons on every stock page. Signal never places real orders: it has no login, so holding broker keys on a public site would let anyone trade with your money.
+
+**Designed against the known harms of gamified trading.** Research by the Ontario Securities Commission found that rewarding trades (points, confetti, leaderboards) raised trading frequency by about 40%, while diversification scores, goals and progress for learning helped investors. So nothing here rewards the number of trades, there are no leaderboards or confetti on buying, and the vibe tags describe past swings rather than recommend anything. Everything is saved in your browser.
 
 ### The mascot chat
 She's a rule-based helper (no AI model, no paid API) who reads the same data the page shows, so she can't contradict the screen:
@@ -80,6 +87,7 @@ Not available for free, so not shown: fundamentals (P/E, results, shareholding),
 | `GET /api/stock/{symbol}` | stock page data (2y bars + NSE stats + alerts) |
 | `GET /api/funds/search?q=`, `GET /api/funds/{code}` | fund search, NAV history and returns |
 | `GET /api/quotes?symbols=` | latest quotes for up to 30 symbols (practice portfolio) |
+| `GET /api/boutique?symbols=` | shop cards: last close, day/1-month change, daily volatility |
 | `GET /api/health/sources` | data-source health |
 
 ## Setup (clean clone, Postgres already provisioned)

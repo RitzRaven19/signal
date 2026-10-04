@@ -148,6 +148,10 @@ const SCANS = [
 
 // Plain-words explainers. Kept factual and short; nothing here predicts.
 const GLOSSARY = [
+  [['a share', 'a stock'], "a share is a tiny slice of a company. own one share of Titan and you own a tiny piece of Titan: its stores, brands and profits. there's a 1-minute lesson on it in 🛍️ shop → 📚 learn."],
+  [['diversification', 'diversify', 'diversified'], "diversifying means owning different kinds of companies, so one bad day for one doesn't sink everything. your closet in 🛍️ shop shows a diversity score."],
+  [['spicy', 'steady', 'bouncy', 'vibe', 'vibe tag', 'volatility'], "the vibe tags in the shop describe how much a price has swung day to day lately: steady 🧸 moves calmly, bouncy 🎈 moves a fair bit, spicy 🌶️ swings a lot. they describe the past, they don't say what to buy."],
+  [['sparkles', 'the shop', 'stock shop', 'streak'], "in 🛍️ shop you 'buy' real companies with ₹10,00,000 of pretend money. you earn ✨ sparkles and badges by learning, spreading out and being patient, never by trading a lot."],
   [['rsi', 'relative strength'], "RSI scores how hard a stock has moved lately, from 0 to 100. above 70 is called overbought (it rose fast), below 30 oversold (it fell fast). it describes momentum, it doesn't predict."],
   [['delivery'], "delivery % is the share of the day's traded shares that buyers actually kept instead of selling the same day. high delivery means people are holding, not just day-trading."],
   [['nav'], "NAV (net asset value) is a mutual fund's price per unit: everything the fund owns divided by its units. it's set once a day after the market closes."],
@@ -411,7 +415,8 @@ export async function replyAsync(input, ctx) {
 
     if (MARKET_WORDS.some((w) => text.includes(w))) return wrap(await marketReply(text))
 
-    const looked = text.match(LOOKUP)
+    // "what is tcs share price" / "what's nykaa's price"
+    const looked = text.match(LOOKUP) || text.match(/^(?:what(?:'s| is)|whats)\s+(?:the\s+)?(.+?)(?:'s)?\s+(?:share\s+|stock\s+)?price$/)
     let query = looked ? looked[1].replace(FILLER, '').replace(/\s+/g, ' ').trim() : null
     const fallback = reply(input, ctx)
     // a bare word or two ("tcs", "hdfc bank") the offline brain doesn't know
