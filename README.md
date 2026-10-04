@@ -39,7 +39,7 @@ Hand-drawn SVG price chart (1m–2y, hover readout, optional 50/200-day averages
 Search any Indian mutual fund and see its NAV chart (1 month to its whole history) and returns: absolute up to 1 year, CAGR for 3y/5y/since launch, the same convention AMFI factsheets use. A fund with no NAV for a week is flagged as possibly merged or closed.
 
 ### 🎀 Practice portfolio
-Paper trading with ₹10,00,000 of pretend money: buy and sell any NSE stock at the latest price and track portfolio value, total and booked P&L, today's P&L, and a trade history. Guards against overspending and overselling. Nothing real is bought or sold, and the book is saved in your browser.
+Paper trading with ₹10,00,000 of pretend money: buy and sell any NSE stock at the latest price and track portfolio value, total and booked P&L, today's P&L, and a trade history. Guards against overspending and overselling. Nothing real is bought or sold, and the book is saved in your browser. Every stock page has a **practice trade** button, plus **trade for real on Groww / Zerodha** links that open the stock in your own broker. Signal never places real orders itself: it has no login, so holding broker keys on a public site would let anyone trade with your money.
 
 ### The mascot chat
 She's a rule-based helper (no AI model, no paid API) who reads the same data the page shows, so she can't contradict the screen:

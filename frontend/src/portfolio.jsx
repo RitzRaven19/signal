@@ -26,10 +26,15 @@ function loadBook() {
   return freshBook()
 }
 
-export function PortfolioView({ onOpen }) {
+export function PortfolioView({ onOpen, initialPick = null }) {
   const [book, setBook] = useState(loadBook)
   const [quotes, setQuotes] = useState({})
-  const [picked, setPicked] = useState(null)
+  const [picked, setPicked] = useState(initialPick)
+
+  // "practice trade" on a stock page lands here with that stock picked
+  useEffect(() => {
+    if (initialPick) setPicked(initialPick)
+  }, [initialPick])
   const [qty, setQty] = useState('1')
   const [note, setNote] = useState(null)
 

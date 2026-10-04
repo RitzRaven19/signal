@@ -513,6 +513,12 @@ export default function App() {
   const closeSheet = useCallback(() => setOpenSymbol(null), [])
   const [openFund, setOpenFund] = useState(null)
   const closeFund = useCallback(() => setOpenFund(null), [])
+  const [practicePick, setPracticePick] = useState(null)
+  const practiceTrade = (symbol) => {
+    setPracticePick(symbol)
+    setOpenSymbol(null)
+    setView('practice')
+  }
   const [error, setError] = useState(null)
   const [now, setNow] = useState(() => new Date())
   const [loaded, setLoaded] = useState(false)
@@ -684,7 +690,7 @@ export default function App() {
         )}
         {view === 'scans' && <ScansView onOpen={setOpenSymbol} />}
         {view === 'funds' && <FundsView onOpen={setOpenFund} />}
-        {view === 'practice' && <PortfolioView onOpen={setOpenSymbol} />}
+        {view === 'practice' && <PortfolioView onOpen={setOpenSymbol} initialPick={practicePick} />}
         {view === 'mine' && (
         <>
         <section className="pane watchlist-pane">
@@ -782,6 +788,7 @@ export default function App() {
           inWatchlist={watchlist.some((r) => r.symbol === openSymbol)}
           onAdd={handleAdd}
           onClose={closeSheet}
+          onPractice={practiceTrade}
         />
       )}
       {openFund && <FundSheet code={openFund} onClose={closeFund} />}

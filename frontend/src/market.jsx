@@ -648,9 +648,35 @@ function RangeBar({ low, high, value, label }) {
 
 const EVENT_LABEL = { RESIDUAL_MOVE: '🚀 unusual move', DELIVERY_CONVICTION: '💰 delivery buying', BLOCK_TRADE: '🐋 block trade' }
 
-export function StockSheet({ symbol, inWatchlist, onAdd, onClose }) {
+// Real trades happen in the user's own broker app: Signal only hands off
+// to it (no keys, no orders from this site, which has no login). Links were
+// checked: Zerodha's page takes the NSE ticker directly; Groww's stock pages
+// need an exact name slug, so it gets Groww's search page instead.
+function TradeLinks({ symbol, onPractice }) {
+  if (!symbol?.endsWith('.NS')) return null
+  const t = encodeURIComponent(bare(symbol))
+  return (
+    <div className="trade-links">
+      {onPractice && (
+        <button className="ack-btn trade-practice" onClick={() => onPractice(symbol)}>
+          🎀 practice trade
+        </button>
+      )}
+      <span className="trade-label">trade for real on</span>
+      <a className="trade-link" href={`https://groww.in/search?q=${t}`} target="_blank" rel="noopener noreferrer">
+        Groww ↗
+      </a>
+      <a className="trade-link" href={`https://zerodha.com/markets/stocks/NSE/${t}/`} target="_blank" rel="noopener noreferrer">
+        Zerodha ↗
+      </a>
+    </div>
+  )
+}
+
+export function StockSheet({ symbol, inWatchlist, onAdd, onClose, onPractice }) {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
+  const [attempt, setAttempt] = useState(0) // bumped by "try again": Yahoo fails now and then
 
   useEffect(() => {
     let live = true
@@ -659,13 +685,16 @@ export function StockSheet({ symbol, inWatchlist, onAdd, onClose }) {
     getStock(symbol)
       .then((d) => live && setData(d))
       .catch((e) => live && setError(e.message))
-    const onKey = (e) => e.key === 'Escape' && onClose()
-    document.addEventListener('keydown', onKey)
     return () => {
       live = false
-      document.removeEventListener('keydown', onKey)
     }
-  }, [symbol, onClose])
+  }, [symbol, attempt])
+
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose()
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   return (
     <div className="sheet-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -676,7 +705,10 @@ export function StockSheet({ symbol, inWatchlist, onAdd, onClose }) {
         {error ? (
           <div className="notice-card">
             <p className="notice-headline">🥺 couldn't load {bare(symbol)}</p>
-            <p className="notice-body">{error}</p>
+            <p className="notice-body">the price source didn't answer this time. it usually works on a second try.</p>
+            <button className="ack-btn trade-practice" onClick={() => setAttempt((a) => a + 1)}>
+              🔄 try again
+            </button>
           </div>
         ) : !data ? (
           <MiniLoader text={`loading ${bare(symbol)}…`} />
@@ -702,6 +734,7 @@ export function StockSheet({ symbol, inWatchlist, onAdd, onClose }) {
               <span className={`change ${dir(data.pct_change)}`}>{fmtPct(data.pct_change)} today</span>
               <span className={`badge badge-${data.staleness}`}>{data.staleness === 'closed' ? '🌙 last close' : data.staleness}</span>
             </div>
+            <TradeLinks symbol={data.symbol} onPractice={onPractice} />
 
             <PriceChart bars={data.bars} />
 
