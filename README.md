@@ -109,6 +109,8 @@ uvicorn app.main:app --reload
 
 Open `http://127.0.0.1:8000`. `DATABASE_URL` is the only variable needed. For the AI explainer, also set `GEMINI_API_KEY` (a free key from Google AI Studio); it's optional.
 
+**Tests:** `cd backend && pip install -r requirements-dev.txt && pytest` and `cd frontend && npm test`. They fake the database, Yahoo, NSE and Gemini, so no secrets are needed, and GitHub Actions runs both on every push (`.github/workflows/tests.yml`). They lock in the production bugs found so far: the holiday-day duplicate bhavcopy, Yahoo's day-late bars, "market closed" vs stale prices, the chat taking "multiple" as a request for tips, AI turn order, overload fallback and rate limits, fund CAGR maths, portfolio cost blending, and every point & learn key having an explanation.
+
 To run the daily ingest yourself: `pip install -r backend/requirements-ingest.txt` and `python backend/ingest_daily.py`. For the scheduled job, add `DATABASE_URL` as a repository secret on GitHub.
 
 ## The residual formula, and why it's the definition of "meaningful"
