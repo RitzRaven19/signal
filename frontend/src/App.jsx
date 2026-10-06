@@ -484,7 +484,10 @@ function QuietLogCard({ event }) {
         <span className="event-type-chip">
           {emoji} {event.type}
         </span>
-        <span className="event-score">{event.score.toFixed(1)}σ</span>
+        <span className="event-score">
+          {event.score.toFixed(1)}
+          {event.type === 'RESIDUAL_MOVE' ? 'σ' : '×'}
+        </span>
       </div>
       <p className="event-reason quiet-reason">{event.reason}</p>
       <div className="event-footer">
